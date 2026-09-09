@@ -88,6 +88,7 @@
     this.seqIndex = 0;
     this.eatenChars = [];
     this.boostDrop = 0;
+    this.shield = cfg.shield || 0;
   }
 
   function FanwenArena(opts) {
@@ -205,6 +206,7 @@
           y: pose.y,
           angle: pose.angle,
           mass: 24,
+          shield: 3.2,
         })
       );
     }
@@ -220,6 +222,7 @@
           y: pose.y,
           angle: pose.angle,
           mass: 20 + Math.random() * 30,
+          shield: 1.6,
         })
       );
     }
@@ -236,7 +239,7 @@
   };
 
   FanwenArena.prototype.foodTarget = function () {
-    return Math.round((this.radius * this.radius) / 11000);
+    return Math.round((this.radius * this.radius) / 8200);
   };
 
   FanwenArena.prototype.expectedChar = function (snake) {
@@ -254,29 +257,40 @@
     this.food.push({ x: spot.x, y: spot.y, char: ch, r: 7 });
   };
 
+  /**
+   * 保證「下一個要吃的字」隨時找得到：附近至少一顆，全場至少四顆。
+   * 沒有這一步，指定的字會散落在大場地各處，背默進度幾乎推不動。
+   */
   FanwenArena.prototype.ensureExpectedFood = function () {
     const self = this;
     this.snakes.forEach(function (snake) {
       if (snake.dead || snake.isBot) return;
       const want = self.expectedChar(snake);
       if (!want) return;
-      let count = 0;
+      let total = 0;
+      let near = 0;
       for (let i = 0; i < self.food.length; i++) {
-        if (self.food[i].char === want) count++;
-        if (count >= 3) return;
+        if (self.food[i].char !== want) continue;
+        total++;
+        if (dist2(snake.x, snake.y, self.food[i].x, self.food[i].y) < 360 * 360) near++;
       }
-      for (let i = count; i < 3; i++) {
+      const place = function (min, max) {
         const a = Math.random() * Math.PI * 2;
-        const d = 220 + Math.random() * 420;
+        const d = min + Math.random() * (max - min);
         let x = snake.x + Math.cos(a) * d;
         let y = snake.y + Math.sin(a) * d;
-        if (Math.sqrt(x * x + y * y) > self.radius - 70) {
-          const spot = self.randomSpot(90);
-          x = spot.x;
-          y = spot.y;
+        if (Math.sqrt(x * x + y * y) > self.radius - 80) {
+          const inward = Math.atan2(-snake.y, -snake.x);
+          x = snake.x + Math.cos(inward) * d;
+          y = snake.y + Math.sin(inward) * d;
         }
         self.spawnFood({ x: x, y: y }, want);
+      };
+      if (near < 1) {
+        place(140, 320);
+        total++;
       }
+      for (let i = total; i < 4; i++) place(320, 700);
     });
   };
 
@@ -373,11 +387,23 @@
 
     this.snakes.forEach(function (snake) {
       if (snake.dead) return;
+      if (snake.shield > 0) snake.shield = Math.max(0, snake.shield - dt);
       const hr = headRadius(snake.mass);
-      if (Math.sqrt(snake.x * snake.x + snake.y * snake.y) > self.radius - hr) {
+      const fromCentre = Math.sqrt(snake.x * snake.x + snake.y * snake.y);
+      if (fromCentre > self.radius - hr) {
+        /* 護盾期間只把蛇推回場內，並轉向圓心，不判死。 */
+        if (snake.shield > 0) {
+          const k = (self.radius - hr - 2) / (fromCentre || 1);
+          snake.x *= k;
+          snake.y *= k;
+          snake.angle = Math.atan2(-snake.y, -snake.x);
+          snake.pointerAngle = null;
+          return;
+        }
         self.killSnake(snake, null, "撞到結界");
         return;
       }
+      if (snake.shield > 0) return;
       for (let i = 0; i < self.snakes.length; i++) {
         const other = self.snakes[i];
         if (other === snake || other.dead) continue;
@@ -463,6 +489,7 @@
     bot.y = pose.y;
     bot.angle = pose.angle;
     bot.mass = 20 + Math.random() * 20;
+    bot.shield = 1.6;
     bot.points = [];
     for (let i = 0; i < 24; i++) {
       bot.points.push({
@@ -867,11 +894,35 @@
           if (s.dead) return;
           this.drawSnakeBody(ctx, s.points, s.mass, s.color, s.isLocal && !s.isBot, zoom);
           this.drawSnakeHead(ctx, s.x, s.y, s.angle, s.mass, s.color, s.name, zoom);
+          if (s.shield > 0) {
+            ctx.save();
+            ctx.globalAlpha = 0.35 + 0.35 * Math.sin(now / 90);
+            ctx.strokeStyle = "#f0d68a";
+            ctx.lineWidth = 3 / zoom;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, headRadius(s.mass) * 2.1, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
         }.bind(this)
       );
     }
 
     ctx.restore();
+
+    if (this.layout === "solo" && localSnake && !localSnake.dead && want) {
+      let best = null;
+      let bd = Infinity;
+      for (let i = 0; i < this.food.length; i++) {
+        if (this.food[i].char !== want) continue;
+        const d = dist2(localSnake.x, localSnake.y, this.food[i].x, this.food[i].y);
+        if (d < bd) {
+          bd = d;
+          best = this.food[i];
+        }
+      }
+      if (best) this.drawCompass(ctx, fit, localSnake, best, want, pulse);
+    }
 
     this.drawMinimap(ctx, fit, snakes);
     this.drawLeaderboard(ctx, fit);
@@ -1009,6 +1060,44 @@
     ctx.textBaseline = "bottom";
     ctx.fillStyle = "rgba(246, 239, 221, 0.85)";
     ctx.fillText(name, x, y - r * 1.9);
+    ctx.restore();
+  };
+
+  /** 場地很大，用羅盤指出最近的「下一個字」在哪個方向、多遠。 */
+  FanwenArena.prototype.drawCompass = function (ctx, fit, me, target, char, pulse) {
+    const d = Math.sqrt(dist2(me.x, me.y, target.x, target.y));
+    const a = Math.atan2(target.y - me.y, target.x - me.x);
+    const rad = Math.min(fit.w, fit.h) * 0.34;
+    const x = fit.w / 2 + Math.cos(a) * rad;
+    const y = fit.h / 2 + Math.sin(a) * rad;
+    ctx.save();
+    ctx.globalAlpha = 0.55 + pulse * 0.35;
+    ctx.translate(x, y);
+    ctx.save();
+    ctx.rotate(a);
+    ctx.fillStyle = "#e8b84a";
+    ctx.beginPath();
+    ctx.moveTo(16, 0);
+    ctx.lineTo(4, -8);
+    ctx.lineTo(4, 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = "rgba(12, 10, 9, 0.8)";
+    ctx.beginPath();
+    ctx.arc(0, 0, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#e8b84a";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = "#f0d68a";
+    ctx.font = "700 15px " + D.SERIF;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(char, 0, 1);
+    ctx.font = "600 10px " + D.SANS;
+    ctx.fillStyle = "rgba(240, 214, 138, 0.85)";
+    ctx.fillText(Math.round(d) + "", 0, 22);
     ctx.restore();
   };
 

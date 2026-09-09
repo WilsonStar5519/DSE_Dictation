@@ -739,4 +739,14 @@
       else arena.render();
     }
   });
+
+  /* 除錯／自動化測試用的入口 */
+  window.FanwenGame = {
+    classic: classic,
+    arena: arena,
+    modes: MODES,
+    current: function () {
+      return { mode: mode.id, engine: engineKind, workId: work && work.id, screen: currentScreen };
+    },
+  };
 })();
