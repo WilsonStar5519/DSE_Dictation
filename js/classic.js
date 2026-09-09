@@ -59,6 +59,10 @@
 
   const SWIPE_THRESHOLD = 16;
 
+  function key(p) {
+    return p.x + "," + p.y;
+  }
+
   function swipeDir(dx, dy) {
     if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? "right" : "left";
     return dy > 0 ? "down" : "up";
