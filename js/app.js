@@ -278,6 +278,7 @@
     resultOverlay.setAttribute("aria-hidden", "true");
     recite.textContent = "";
     recite.dataset.empty = "1";
+    recite.dataset.hint = mode.id === "leisure" ? "1" : "0";
 
     el("speed-row").hidden = engineKind !== "classic";
     touchPad.classList.toggle("on", engineKind === "classic");

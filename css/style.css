@@ -769,6 +769,13 @@ button {
 }
 
 .recite[data-empty="1"]::after {
+  content: "按「開始」後，依範文順序吃字。";
+  color: var(--cream-dim);
+  font-family: var(--sans);
+  font-size: 0.78rem;
+}
+
+.recite[data-empty="1"][data-hint="1"]::after {
   content: "按「開始」後，依範文順序吃金色的字。";
   color: var(--cream-dim);
   font-family: var(--sans);

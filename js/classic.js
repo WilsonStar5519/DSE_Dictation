@@ -207,6 +207,7 @@
     this.countdown = 2400;
     this.startedAt = performance.now();
     this._acc = 0;
+    this.startLoop();
     this.emitState();
   };
 
