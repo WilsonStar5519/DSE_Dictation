@@ -479,6 +479,12 @@
     D.roundRect(ctx, 0, 0, boardSize, boardSize, cell * 0.5);
     ctx.stroke();
 
+    /* 落款畫在字牌之下，免得壓住棋子 */
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    D.seal(ctx, boardSize - cell * 2.1, boardSize - cell * 2.1, cell * 1.5, "範文");
+    ctx.restore();
+
     const expected = this.expectedChar();
     const fontSize = cell * 0.6;
     const self = this;
@@ -585,7 +591,6 @@
     ctx.arc(cx + fx - ox, cy + fy - oy, eye, 0, Math.PI * 2);
     ctx.fill();
 
-    D.seal(ctx, boardSize - cell * 2.1, boardSize - cell * 2.1, cell * 1.5, "範文");
     ctx.restore();
 
     if (now < this.flashUntil) {
