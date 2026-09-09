@@ -475,6 +475,8 @@
   }
 
   function closeResult() {
+    /* 先移開焦點，否則被 aria-hidden 蓋住的按鈕仍持有焦點。 */
+    if (resultOverlay.contains(document.activeElement)) document.activeElement.blur();
     resultOverlay.classList.remove("active");
     resultOverlay.setAttribute("aria-hidden", "true");
   }

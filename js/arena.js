@@ -153,6 +153,7 @@
     this.remote = null;
     this.ended = false;
     this.running = false;
+    this.countdown = 0;
     this.snakes = [];
     this.food = [];
     this.startLoop();
@@ -165,6 +166,22 @@
     return { x: Math.cos(a) * r, y: Math.sin(a) * r };
   };
 
+  /**
+   * 出生點：靠內圈並朝向圓心，免得一開局就直奔結界。
+   * side 有值時固定放在該方位，讓雙人對戰分邊。
+   */
+  FanwenArena.prototype.spawnPose = function (frac, side) {
+    const r = this.radius * (frac || 0.4) * (0.55 + Math.random() * 0.45);
+    const a = side === undefined ? Math.random() * Math.PI * 2 : side;
+    const x = Math.cos(a) * r;
+    const y = Math.sin(a) * r;
+    return {
+      x: x,
+      y: y,
+      angle: Math.atan2(-y, -x) + (Math.random() - 0.5) * 0.5,
+    };
+  };
+
   FanwenArena.prototype.start = function () {
     this.snakes = [];
     this.food = [];
@@ -174,8 +191,9 @@
     this.startedAt = performance.now();
 
     const humans = this.layout === "solo" ? 1 : 2;
+    const base = Math.random() * Math.PI * 2;
     for (let i = 0; i < humans; i++) {
-      const spot = this.randomSpot(260);
+      const pose = this.spawnPose(0.42, humans > 1 ? base + i * Math.PI : undefined);
       this.snakes.push(
         new Snake({
           id: "p" + i,
@@ -183,24 +201,24 @@
           color: PLAYER_COLORS[i],
           isLocal: this.layout !== "online" || i === 0,
           playerIndex: i,
-          x: spot.x,
-          y: spot.y,
-          angle: Math.random() * Math.PI * 2,
+          x: pose.x,
+          y: pose.y,
+          angle: pose.angle,
           mass: 24,
         })
       );
     }
     for (let i = 0; i < this.botCount; i++) {
-      const spot = this.randomSpot(200);
+      const pose = this.spawnPose(0.6);
       this.snakes.push(
         new Snake({
           id: "b" + i,
           name: BOT_NAMES[i % BOT_NAMES.length],
           color: PALETTE[i % PALETTE.length],
           isBot: true,
-          x: spot.x,
-          y: spot.y,
-          angle: Math.random() * Math.PI * 2,
+          x: pose.x,
+          y: pose.y,
+          angle: pose.angle,
           mass: 20 + Math.random() * 30,
         })
       );
@@ -211,6 +229,7 @@
 
     this.camera.x = this.snakes[0].x;
     this.camera.y = this.snakes[0].y;
+    this.countdown = 2.4;
     this.running = true;
     this.startLoop();
     this.emitState();
@@ -290,8 +309,14 @@
     const dt = Math.min(0.05, (now - this._last) / 1000);
     this._last = now;
     if (this.running && !this.paused && !this.ended && !this.remote) {
-      this.elapsed = now - this.startedAt;
-      this.update(dt);
+      if (this.countdown > 0) {
+        this.countdown -= dt;
+        this.startedAt = now;
+        if (this.countdown <= 0) Audio.segment();
+      } else {
+        this.elapsed = now - this.startedAt;
+        this.update(dt);
+      }
       this.emitState();
       if (this.netSend) this.broadcast(now);
     }
@@ -431,12 +456,12 @@
   };
 
   FanwenArena.prototype.respawnBot = function (bot) {
-    const spot = this.randomSpot(260);
+    const pose = this.spawnPose(0.6);
     bot.dead = false;
     bot.respawnIn = null;
-    bot.x = spot.x;
-    bot.y = spot.y;
-    bot.angle = Math.random() * Math.PI * 2;
+    bot.x = pose.x;
+    bot.y = pose.y;
+    bot.angle = pose.angle;
     bot.mass = 20 + Math.random() * 20;
     bot.points = [];
     for (let i = 0; i < 24; i++) {
@@ -851,13 +876,24 @@
     this.drawMinimap(ctx, fit, snakes);
     this.drawLeaderboard(ctx, fit);
 
-    if (this.paused || (!this.running && !this.ended)) {
+    if (this.paused || this.countdown > 0 || (!this.running && !this.ended)) {
       const waiting = this.isGuest && !this.remote;
+      const counting = this.countdown > 0;
       ctx.fillStyle = "rgba(10, 8, 7, 0.66)";
       ctx.fillRect(0, 0, fit.w, fit.h);
       D.glowText(
         ctx,
-        this.paused ? "暫　停" : waiting ? "等待主機" : "按「開始」入局",
+        counting
+          ? this.countdown > 1.6
+            ? "三"
+            : this.countdown > 0.8
+            ? "二"
+            : "一"
+          : this.paused
+          ? "暫　停"
+          : waiting
+          ? "等待主機"
+          : "按「開始」入局",
         fit.w / 2,
         fit.h / 2 - fit.h * 0.02,
         "700 " + Math.round(Math.min(fit.w * 0.075, 42)) + "px " + D.SERIF,
@@ -872,6 +908,7 @@
           : this.layout === "local2"
           ? "朱蛇 ← →　青蛇 A D"
           : "指向前進　按住加速",
+
         fit.w / 2,
         fit.h / 2 + fit.h * 0.06,
         "500 " + Math.round(Math.min(fit.w * 0.032, 16)) + "px " + D.SANS,

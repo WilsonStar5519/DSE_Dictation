@@ -113,6 +113,7 @@
     this.pendingDir = "right";
     this.startedAt = 0;
     this.elapsed = 0;
+    this.countdown = 0;
     const mid = Math.floor(GRID / 2);
     this.snake = [
       { x: mid, y: mid },
@@ -133,6 +134,7 @@
     this.spawnSegment();
     this.running = true;
     this.paused = false;
+    this.countdown = 2400;
     this.startedAt = performance.now();
     this._acc = 0;
     this.emitState();
@@ -167,21 +169,29 @@
     const dt = Math.min(100, now - this._last);
     this._last = now;
     if (this.running && !this.paused && !this.ended) {
-      this.elapsed = now - this.startedAt;
-      if (this.mode.limit && this.elapsed >= this.mode.limit * 1000) {
-        this.finish(false, "時間到");
+      if (this.countdown > 0) {
+        this.countdown -= dt;
+        this.startedAt = now;
+        this._acc = 0;
+        if (this.countdown <= 0) Audio.segment();
       } else {
-        this._acc += dt;
-        const step = this.stepMs();
-        while (this._acc >= step) {
-          this._acc -= step;
-          this.tick();
-          if (this.ended) break;
+        this.elapsed = now - this.startedAt;
+        if (this.mode.limit && this.elapsed >= this.mode.limit * 1000) {
+          this.finish(false, "時間到");
+        } else {
+          this._acc += dt;
+          const step = this.stepMs();
+          while (this._acc >= step) {
+            this._acc -= step;
+            this.tick();
+            if (this.ended) break;
+          }
         }
       }
       this.emitState();
     }
-    this.render(this.running && !this.paused ? this._acc / this.stepMs() : 1);
+    const playing = this.running && !this.paused && this.countdown <= 0;
+    this.render(playing ? this._acc / this.stepMs() : 1);
   };
 
   FanwenClassic.prototype.currentSegment = function () {
@@ -586,7 +596,10 @@
     if (!this.running && !this.ended) {
       this.renderCurtain(ctx, fit, "按「開始」入局", "方向鍵／WASD　手機可滑動");
     } else if (this.paused) {
-      this.renderCurtain(ctx, fit, "暫　停", "再按空白鍵繼續");
+      this.renderCurtain(ctx, fit, "暫　停", "按 P 或「繼續」");
+    } else if (this.countdown > 0) {
+      const n = this.countdown > 1600 ? "三" : this.countdown > 800 ? "二" : "一";
+      this.renderCurtain(ctx, fit, n, "準備好方向鍵");
     }
   };
 
