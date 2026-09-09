@@ -1,6 +1,6 @@
 /**
  * 經典格子模式引擎：按範文順序吃字。
- * 三種規則：經典背默、限時挑戰（可穿牆）、零錯挑戰（吃錯即終止）。
+ * 三種規則：經典背默（無金字提示）、休閒模式（可穿牆、有提示）、零錯挑戰。
  */
 (function (global) {
   const D = global.FanwenDraw;
@@ -28,9 +28,33 @@
   };
 
   const MODES = {
-    classic: { id: "classic", name: "經典背默", wrap: false, limit: 0, zero: false },
-    timed: { id: "timed", name: "限時挑戰", wrap: true, limit: 90, zero: false },
-    strict: { id: "strict", name: "零錯挑戰", wrap: false, limit: 0, zero: true },
+    classic: {
+      id: "classic",
+      name: "經典背默",
+      wrap: false,
+      limit: 0,
+      zero: false,
+      hint: false,
+      keepCanvas: true,
+    },
+    leisure: {
+      id: "leisure",
+      name: "休閒模式",
+      wrap: true,
+      limit: 0,
+      zero: false,
+      hint: true,
+      keepCanvas: false,
+    },
+    strict: {
+      id: "strict",
+      name: "零錯挑戰",
+      wrap: false,
+      limit: 0,
+      zero: true,
+      hint: false,
+      keepCanvas: true,
+    },
   };
 
   function key(p) {
@@ -92,28 +116,14 @@
 
   FanwenClassic.prototype.load = function (work) {
     this.work = work;
-    this.reset();
+    this.clearRun();
+    this.applySavedProgress(false);
+    this.spawnSegment();
+    this.emitState();
+    this.startLoop();
   };
 
-  FanwenClassic.prototype.reset = function () {
-    this.stopLoop();
-    this.running = false;
-    this.paused = false;
-    this.ended = false;
-    this.score = 0;
-    this.correct = 0;
-    this.mistakes = 0;
-    this.combo = 0;
-    this.bestCombo = 0;
-    this.segIndex = 0;
-    this.eatenInSeg = 0;
-    this.segChars = [];
-    this.foods = [];
-    this.dir = "right";
-    this.pendingDir = "right";
-    this.startedAt = 0;
-    this.elapsed = 0;
-    this.countdown = 0;
+  FanwenClassic.prototype.resetSnake = function () {
     const mid = Math.floor(GRID / 2);
     this.snake = [
       { x: mid, y: mid },
@@ -123,15 +133,75 @@
     this.prevSnake = this.snake.map(function (p) {
       return { x: p.x, y: p.y };
     });
+    this.dir = "right";
+    this.pendingDir = "right";
     this.grow = 0;
+  };
+
+  /** 清掉本局蛇身與計時，分數／畫布進度另外處理。 */
+  FanwenClassic.prototype.clearRun = function () {
+    this.stopLoop();
+    this.running = false;
+    this.paused = false;
+    this.ended = false;
+    this.flashUntil = 0;
+    this.combo = 0;
+    this.eatenInSeg = 0;
+    this.segChars = [];
+    this.foods = [];
+    this.startedAt = 0;
+    this.elapsed = 0;
+    this.countdown = 0;
+    this.resetSnake();
+  };
+
+  FanwenClassic.prototype.applySavedProgress = function (fromStart) {
+    this.segIndex = 0;
+    this.score = 0;
+    this.correct = 0;
+    this.mistakes = 0;
+    this.bestCombo = 0;
+    if (fromStart || !this.mode.keepCanvas || !this.work) return;
+    const saved = global.FanwenStore.getProgress(this.mode.id, this.work.id);
+    if (!saved) return;
+    const last = Math.max(0, this.work.segments.length - 1);
+    this.segIndex = Math.min(Math.max(0, saved.segIndex || 0), last);
+    this.score = saved.score || 0;
+    this.correct = saved.correct || 0;
+    this.mistakes = saved.mistakes || 0;
+    this.bestCombo = saved.bestCombo || 0;
+  };
+
+  FanwenClassic.prototype.saveCheckpoint = function () {
+    if (!this.mode.keepCanvas || !this.work) return;
+    global.FanwenStore.saveProgress(this.mode.id, this.work.id, {
+      segIndex: this.segIndex,
+      score: this.score,
+      correct: this.correct,
+      mistakes: this.mistakes,
+      bestCombo: this.bestCombo,
+    });
+  };
+
+  FanwenClassic.prototype.reset = function () {
+    this.clearRun();
+    this.segIndex = 0;
+    this.score = 0;
+    this.correct = 0;
+    this.mistakes = 0;
+    this.bestCombo = 0;
     this.emitState();
     this.startLoop();
   };
 
-  FanwenClassic.prototype.start = function () {
+  FanwenClassic.prototype.start = function (opts) {
     if (!this.work) return;
-    this.reset();
+    const fromStart = !!(opts && opts.fromStart);
+    this.clearRun();
+    this.applySavedProgress(fromStart);
+    if (fromStart) global.FanwenStore.clearProgress(this.mode.id, this.work.id);
     this.spawnSegment();
+    this.saveCheckpoint();
     this.running = true;
     this.paused = false;
     this.countdown = 2400;
@@ -329,18 +399,9 @@
     this.eatenInSeg = 0;
     this.segChars = [];
     Audio.segment();
-    const mid = Math.floor(GRID / 2);
-    this.snake = [
-      { x: mid, y: mid },
-      { x: mid - 1, y: mid },
-      { x: mid - 2, y: mid },
-    ];
-    this.prevSnake = this.snake.map(function (p) {
-      return { x: p.x, y: p.y };
-    });
-    this.dir = "right";
-    this.pendingDir = "right";
+    this.resetSnake();
     this.spawnSegment();
+    this.saveCheckpoint();
   };
 
   FanwenClassic.prototype.grade = function (won, accuracy) {
@@ -366,8 +427,12 @@
     const attempts = this.correct + this.mistakes;
     const accuracy = attempts ? this.correct / attempts : 0;
     const record = global.FanwenStore.submitScore(this.mode.id, this.work.id, this.score);
-    if (won) Audio.win();
-    else Audio.lose();
+    if (won) {
+      if (this.mode.keepCanvas) global.FanwenStore.clearProgress(this.mode.id, this.work.id);
+      Audio.win();
+    } else {
+      Audio.lose();
+    }
     this.emitState();
     this.onEnd({
       mode: this.mode.id,
@@ -423,7 +488,7 @@
       segTotal: this.work ? this.work.segments.length : 0,
       charIndex: this.eatenInSeg,
       charTotal: seq.length,
-      nextChar: this.expectedChar() || "—",
+      nextChar: this.mode.hint ? this.expectedChar() || "—" : "",
       progress: this.progressText(),
       running: this.running,
       paused: this.paused,
@@ -488,11 +553,12 @@
     const expected = this.expectedChar();
     const fontSize = cell * 0.6;
     const self = this;
+    const showHint = this.mode.hint;
 
     this.foods.forEach(function (food) {
       const x = food.x * cell;
       const y = food.y * cell;
-      const isNext = food.char === expected;
+      const isNext = showHint && food.char === expected;
       const inset = cell * 0.1;
       if (isNext) {
         const pulse = 0.5 + 0.5 * Math.sin(now / 220);
@@ -599,7 +665,11 @@
     }
 
     if (!this.running && !this.ended) {
-      this.renderCurtain(ctx, fit, "按「開始」入局", "方向鍵／WASD　手機可滑動");
+      const sub =
+        this.mode.keepCanvas && this.segIndex > 0
+          ? "將從第 " + (this.segIndex + 1) + " 組繼續　方向鍵／WASD"
+          : "方向鍵／WASD　手機可滑動";
+      this.renderCurtain(ctx, fit, "按「開始」入局", sub);
     } else if (this.paused) {
       this.renderCurtain(ctx, fit, "暫　停", "按 P 或「繼續」");
     } else if (this.countdown > 0) {

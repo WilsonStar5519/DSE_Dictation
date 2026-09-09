@@ -9,28 +9,30 @@
       id: "classic",
       badge: "壹",
       name: "經典背默",
-      desc: "依範文順序吃字，撞牆或咬到自己即結束。每完成一組句子便蛻皮重來。",
+      desc: "依範文順序吃字，畫面上沒有金色提示。撞牆或咬到自己即結束。死亡後再來一次會留在當前句組。",
       tag: "基本",
       engine: "classic",
       tone: "classic",
+      keepCanvas: true,
     },
     {
-      id: "timed",
+      id: "leisure",
       badge: "貳",
-      name: "限時挑戰",
-      desc: "九十秒倒數，四邊可以穿牆，比誰在鐘響前搶得多。",
-      tag: "計時",
+      name: "休閒模式",
+      desc: "可穿牆、沒有時限，金色字牌會提示下一個要吃的字，方便反覆溫習。",
+      tag: "溫習",
       engine: "classic",
-      tone: "classic",
+      tone: "leisure",
     },
     {
       id: "strict",
       badge: "參",
       name: "零錯挑戰",
-      desc: "吃錯一個字即出局，專門磨準確度。",
+      desc: "吃錯一個字即出局。沒有金色提示；死亡後再來一次會留在當前句組。",
       tag: "高難",
       engine: "classic",
       tone: "classic",
+      keepCanvas: true,
     },
     {
       id: "arena",
@@ -42,6 +44,7 @@
       layout: "solo",
       bots: 5,
       tone: "arena",
+      hidden: true,
     },
     {
       id: "duel",
@@ -53,6 +56,7 @@
       layout: "local2",
       bots: 2,
       tone: "duel",
+      hidden: true,
     },
     {
       id: "online",
@@ -64,13 +68,14 @@
       layout: "online",
       bots: 2,
       tone: "online",
+      hidden: true,
     },
   ];
 
   const HUD_BY_MODE = {
-    classic: ["score", "best", "next", "progress", "combo", "mistakes"],
-    timed: ["score", "best", "next", "progress", "time", "mistakes"],
-    strict: ["score", "best", "next", "progress", "combo", "mistakes"],
+    classic: ["score", "best", "progress", "combo", "mistakes"],
+    leisure: ["score", "best", "next", "progress", "combo", "mistakes"],
+    strict: ["score", "best", "progress", "combo", "mistakes"],
     arena: ["score", "best", "next", "progress", "kills", "length"],
     duel: ["score", "time", "next", "kills", "length"],
     online: ["score", "time", "next", "kills", "length"],
@@ -155,7 +160,9 @@
   function renderModes() {
     const grid = el("mode-grid");
     grid.innerHTML = "";
-    MODES.forEach(function (item) {
+    MODES.filter(function (item) {
+      return !item.hidden;
+    }).forEach(function (item) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "mode-card";
@@ -314,9 +321,9 @@
     }
   }
 
-  function startClassic() {
+  function startClassic(opts) {
     Audio.unlock();
-    classic.start();
+    classic.start(opts);
     el("btn-start").textContent = "開始";
   }
 
@@ -466,6 +473,11 @@
     resultOverlay.classList.add("active");
     resultOverlay.setAttribute("aria-hidden", "false");
 
+    const fromStart = el("btn-from-start");
+    if (fromStart) {
+      fromStart.hidden = !(mode.keepCanvas && !result.won && (result.segments || 0) > 0);
+    }
+
     if (netRole === "host" && net && net.isConnected()) {
       net.send({ t: "over", payload: result });
     }
@@ -603,6 +615,12 @@
     closeResult();
     if (engineKind === "classic") startClassic();
     else startArena();
+  });
+
+  el("btn-from-start").addEventListener("click", function () {
+    Audio.ui();
+    closeResult();
+    startClassic({ fromStart: true });
   });
 
   el("btn-change").addEventListener("click", function () {

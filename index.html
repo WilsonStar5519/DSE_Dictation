@@ -15,10 +15,10 @@
     />
     <meta
       name="description"
-      content="中文 DSE 指定文言經典十二篇背默遊戲：中國風街機介面，含經典、限時、零錯、群蛇亂鬥、同機雙人與連線對戰模式。"
+      content="中文 DSE 指定文言經典十二篇背默遊戲：經典背默、休閒模式與零錯挑戰。"
     />
     <title>範文貪食蛇 · 十二篇背默街機</title>
-    <link rel="stylesheet" href="css/style.css?v=20260909" />
+    <link rel="stylesheet" href="css/style.css?v=20260910" />
   </head>
   <body>
     <div class="crt" aria-hidden="true"></div>
@@ -46,7 +46,6 @@
         <footer class="home-foot">
           <button id="btn-sound" class="chip" type="button">音效：開</button>
           <button id="btn-help" class="chip" type="button">玩法說明</button>
-          <a class="chip" href="https://github.com/WilsonStar5519/DSE_Dictation" target="_blank" rel="noreferrer">原始碼</a>
         </footer>
       </div>
     </section>
@@ -211,7 +210,8 @@
         <p id="result-record" class="result-record" hidden>★ 新紀錄 ★</p>
         <dl id="result-stats" class="result-stats"></dl>
         <div class="modal-actions">
-          <button id="btn-again" class="btn btn-primary" type="button">再來一局</button>
+          <button id="btn-again" class="btn btn-primary" type="button">再來一次</button>
+          <button id="btn-from-start" class="btn btn-ghost" type="button" hidden>從頭背默</button>
           <button id="btn-change" class="btn btn-ghost" type="button">換篇章</button>
           <button id="btn-home" class="btn btn-ghost" type="button">回主頁</button>
         </div>
@@ -225,24 +225,21 @@
         <div class="help-body">
           <h4>共通</h4>
           <p>
-            畫面上的字牌是範文的字。<b class="gold">金色字牌</b>就是下一個要吃的字，
-            吃對會變長並加分，吃錯會扣分。
+            畫面上的字牌是範文的字，必須依原文順序吃字。吃對會變長並加分，吃錯會扣分。
           </p>
           <h4>經典背默</h4>
-          <p>方向鍵或 WASD 轉向，撞牆或咬到自己即結束。每完成一組句子會「蛻皮」重新開始。</p>
-          <h4>限時挑戰</h4>
-          <p>90 秒計時，四邊可穿牆，比誰搶得多。</p>
-          <h4>零錯挑戰</h4>
-          <p>吃錯一個字即出局，考驗記憶是否準確。</p>
-          <h4>群蛇亂鬥</h4>
           <p>
-            參考 slither.io：自由角度轉向，滑鼠／手指指向就是前進方向，按住可加速（會消耗身長）。
-            撞到別人身體就會死，別人撞上你則你得擊殺分。
+            方向鍵或 WASD 轉向，撞牆或咬到自己即結束。畫面上<strong>沒有</strong>金色提示，須憑記憶找出下一個字。
+            每完成一組句子會進入下一組；死亡後按「再來一次」會留在當前這組，不會退回第一組。
           </p>
-          <h4>同機雙人</h4>
-          <p>朱蛇用方向鍵（↑ 加速），青蛇用 A／D 轉向（W 加速），最後生存者勝。</p>
-          <h4>連線對戰</h4>
-          <p>一方建立房間並取得 4 位房間號，另一方輸入房間號即可對戰。</p>
+          <h4>休閒模式</h4>
+          <p>
+            沒有時限，四邊可穿牆。<b class="gold">金色字牌</b>會提示下一個要吃的字，方便反覆溫習。
+          </p>
+          <h4>零錯挑戰</h4>
+          <p>
+            吃錯一個字即出局，沒有金色提示。死亡後按「再來一次」同樣會留在當前這組。
+          </p>
         </div>
         <div class="modal-actions">
           <button id="btn-help-close" class="btn btn-primary" type="button">明白了</button>
@@ -250,14 +247,14 @@
       </div>
     </div>
 
-    <script src="js/poems.js?v=20260909"></script>
-    <script src="js/store.js?v=20260909"></script>
-    <script src="js/audio.js?v=20260909"></script>
-    <script src="js/draw.js?v=20260909"></script>
-    <script src="js/classic.js?v=20260909"></script>
-    <script src="js/arena.js?v=20260909"></script>
-    <script src="js/vendor/peerjs.min.js?v=20260909"></script>
-    <script src="js/net.js?v=20260909"></script>
-    <script src="js/app.js?v=20260909"></script>
+    <script src="js/poems.js?v=20260910"></script>
+    <script src="js/store.js?v=20260910"></script>
+    <script src="js/audio.js?v=20260910"></script>
+    <script src="js/draw.js?v=20260910"></script>
+    <script src="js/classic.js?v=20260910"></script>
+    <script src="js/arena.js?v=20260910"></script>
+    <script src="js/vendor/peerjs.min.js?v=20260910"></script>
+    <script src="js/net.js?v=20260910"></script>
+    <script src="js/app.js?v=20260910"></script>
   </body>
 </html>

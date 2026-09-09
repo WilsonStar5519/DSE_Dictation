@@ -5,7 +5,7 @@
 
   function read() {
     if (cache) return cache;
-    cache = { best: {}, settings: {} };
+    cache = { best: {}, settings: {}, progress: {} };
     try {
       const raw = global.localStorage.getItem(KEY);
       if (raw) {
@@ -13,6 +13,7 @@
         if (parsed && typeof parsed === "object") {
           cache.best = parsed.best || {};
           cache.settings = parsed.settings || {};
+          cache.progress = parsed.progress || {};
         }
       }
     } catch (err) {
@@ -54,6 +55,17 @@
     },
     set: function (name, value) {
       read().settings[name] = value;
+      write();
+    },
+    getProgress: function (mode, workId) {
+      return read().progress[bestKey(mode, workId)] || null;
+    },
+    saveProgress: function (mode, workId, data) {
+      read().progress[bestKey(mode, workId)] = data;
+      write();
+    },
+    clearProgress: function (mode, workId) {
+      delete read().progress[bestKey(mode, workId)];
       write();
     },
   };

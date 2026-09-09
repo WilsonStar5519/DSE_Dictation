@@ -294,9 +294,9 @@ button {
   gap: 11px;
 }
 
-@media (min-width: 620px) {
+@media (min-width: 720px) {
   .mode-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
   }
 }
 
@@ -342,6 +342,12 @@ button {
   font-size: 1.3rem;
   font-weight: 700;
   text-shadow: 0 0 10px rgba(232, 184, 74, 0.5);
+}
+
+.mode-card[data-tone="leisure"] .mode-badge {
+  border-color: rgba(95, 174, 144, 0.7);
+  color: var(--jade-light);
+  text-shadow: 0 0 10px rgba(95, 174, 144, 0.5);
 }
 
 .mode-card[data-tone="duel"] .mode-badge,
@@ -1147,7 +1153,8 @@ button {
   gap: 8px;
 }
 
-.modal-actions .btn:first-child {
+.modal-actions .btn:first-child,
+.modal-actions #btn-from-start {
   grid-column: 1 / -1;
 }
 
