@@ -98,6 +98,7 @@
     this._onTouchStart = this.handleTouchStart.bind(this);
     this._onTouchMove = this.handleTouchMove.bind(this);
     this._onTouchEnd = this.handleTouchEnd.bind(this);
+    this._onDocTouchMove = this.handleDocTouchMove.bind(this);
     this._loop = this.loop.bind(this);
     this._swipe = null;
     this._pointerId = null;
@@ -119,6 +120,7 @@
     surface.addEventListener("touchmove", this._onTouchMove, { passive: false });
     surface.addEventListener("touchend", this._onTouchEnd, { passive: false });
     surface.addEventListener("touchcancel", this._onTouchEnd, { passive: false });
+    document.addEventListener("touchmove", this._onDocTouchMove, { passive: false, capture: true });
   };
 
   FanwenClassic.prototype.detachInput = function () {
@@ -135,6 +137,7 @@
     surface.removeEventListener("touchmove", this._onTouchMove);
     surface.removeEventListener("touchend", this._onTouchEnd);
     surface.removeEventListener("touchcancel", this._onTouchEnd);
+    document.removeEventListener("touchmove", this._onDocTouchMove, { capture: true });
     this.endSwipe();
   };
 
@@ -711,7 +714,7 @@
       this.renderCurtain(ctx, fit, "暫　停", "按 P 或「繼續」");
     } else if (this.countdown > 0) {
       const n = this.countdown > 1600 ? "三" : this.countdown > 800 ? "二" : "一";
-      this.renderCurtain(ctx, fit, n, "準備好方向鍵");
+      this.renderCurtain(ctx, fit, n, "滑動或按方向鍵");
     }
   };
 
@@ -748,7 +751,16 @@
     this.pendingDir = dir;
   };
 
+  FanwenClassic.prototype.shouldLockTouch = function () {
+    return this.running && !this.ended;
+  };
+
+  FanwenClassic.prototype.hasQueuedTurn = function () {
+    return !!(this.pendingDir && this.pendingDir !== this.dir);
+  };
+
   FanwenClassic.prototype.beginSwipe = function (x, y, target) {
+    if (!this.shouldLockTouch()) return false;
     if (isSwipeIgnoreTarget(target)) {
       this._swipe = null;
       return false;
@@ -762,8 +774,13 @@
     const dx = x - this._swipe.x;
     const dy = y - this._swipe.y;
     if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_THRESHOLD) return;
+    /* 對局中已排隊的轉彎要等蛇走完一格再收下一次；倒數中以後劃為準。 */
+    if (this.countdown <= 0 && this.hasQueuedTurn()) {
+      this._swipe.x = x;
+      this._swipe.y = y;
+      return;
+    }
     this.setDirection(swipeDir(dx, dy));
-    /* 起點重設，同一劃可以再轉一次彎。 */
     this._swipe.x = x;
     this._swipe.y = y;
   };
@@ -774,11 +791,17 @@
     this._fromPointer = false;
   };
 
+  FanwenClassic.prototype.lockTouchEvent = function (e) {
+    if (!this.shouldLockTouch() || isSwipeIgnoreTarget(e.target)) return;
+    if (e.cancelable) e.preventDefault();
+  };
+
   FanwenClassic.prototype.handlePointerDown = function (e) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     if (!this.beginSwipe(e.clientX, e.clientY, e.target)) return;
     this._fromPointer = true;
     this._pointerId = e.pointerId;
+    this.lockTouchEvent(e);
     if (this.surface.setPointerCapture) {
       try {
         this.surface.setPointerCapture(e.pointerId);
@@ -790,6 +813,7 @@
 
   FanwenClassic.prototype.handlePointerMove = function (e) {
     if (!this._fromPointer || e.pointerId !== this._pointerId) return;
+    this.lockTouchEvent(e);
     this.moveSwipe(e.clientX, e.clientY);
   };
 
@@ -800,26 +824,27 @@
 
   FanwenClassic.prototype.handleTouchStart = function (e) {
     if (isSwipeIgnoreTarget(e.target)) return;
-    if (e.cancelable) e.preventDefault();
+    this.lockTouchEvent(e);
     if (e.touches.length !== 1) return;
     if (this._fromPointer) return;
     this.beginSwipe(e.touches[0].clientX, e.touches[0].clientY, e.target);
   };
 
   FanwenClassic.prototype.handleTouchMove = function (e) {
-    if (!this._swipe && !this._fromPointer) return;
-    if (e.cancelable) e.preventDefault();
+    this.lockTouchEvent(e);
     if (this._fromPointer || !this._swipe) return;
     const t = e.touches[0];
     if (t) this.moveSwipe(t.clientX, t.clientY);
   };
 
   FanwenClassic.prototype.handleTouchEnd = function (e) {
-    if (this._fromPointer || this._swipe) {
-      if (e.cancelable) e.preventDefault();
-    }
+    this.lockTouchEvent(e);
     if (this._fromPointer) return;
     this.endSwipe();
+  };
+
+  FanwenClassic.prototype.handleDocTouchMove = function (e) {
+    this.lockTouchEvent(e);
   };
 
   FanwenClassic.prototype.handleKey = function (e) {

@@ -619,9 +619,21 @@ button {
   user-select: none;
 }
 
+html.game-playing,
+html.game-playing body {
+  overflow: hidden;
+  height: 100%;
+  height: 100dvh;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
 .screen-game.is-playing button,
 .screen-game.is-playing a,
-.screen-game.is-playing .touch-pad {
+.screen-game.is-playing .touch-pad,
+html.game-playing button,
+html.game-playing a,
+html.game-playing .touch-pad {
   touch-action: manipulation;
 }
 

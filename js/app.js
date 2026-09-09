@@ -132,6 +132,7 @@
       arena.stop();
       arena.detachInput();
       screens.game.classList.remove("is-playing");
+      document.documentElement.classList.remove("game-playing");
     }
     Object.keys(screens).forEach(function (key) {
       screens[key].classList.toggle("active", key === name);
@@ -386,10 +387,9 @@
     }
 
     el("btn-pause").textContent = state.paused ? "繼續" : "暫停";
-    screens.game.classList.toggle(
-      "is-playing",
-      engineKind === "classic" && !!state.running && !state.ended
-    );
+    const playing = engineKind === "classic" && !!state.running && !state.ended;
+    screens.game.classList.toggle("is-playing", playing);
+    document.documentElement.classList.toggle("game-playing", playing);
 
     if (engineKind === "classic") {
       const text = state.progress || "";
