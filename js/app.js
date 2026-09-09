@@ -112,6 +112,7 @@
 
   const classic = new window.FanwenClassic({
     canvas: stage,
+    surface: screens.game,
     onState: renderHud,
     onEnd: showResult,
   });
@@ -130,6 +131,7 @@
       classic.detachInput();
       arena.stop();
       arena.detachInput();
+      screens.game.classList.remove("is-playing");
     }
     Object.keys(screens).forEach(function (key) {
       screens[key].classList.toggle("active", key === name);
@@ -287,7 +289,7 @@
     el("btn-pause").hidden = mode.layout === "online";
     el("hint").textContent =
       engineKind === "classic"
-        ? "電腦：方向鍵／WASD　手機：在畫面滑動或用下方按鈕"
+        ? "電腦：方向鍵／WASD　手機：在畫面上滑動立刻轉向，或用下方按鈕"
         : mode.id === "duel"
         ? "朱蛇：← → 轉向、↑ 加速　　青蛇：A／D 轉向、W 加速"
         : "滑鼠／手指指向就是前進方向，按住畫面可加速（消耗身長）";
@@ -384,6 +386,10 @@
     }
 
     el("btn-pause").textContent = state.paused ? "繼續" : "暫停";
+    screens.game.classList.toggle(
+      "is-playing",
+      engineKind === "classic" && !!state.running && !state.ended
+    );
 
     if (engineKind === "classic") {
       const text = state.progress || "";

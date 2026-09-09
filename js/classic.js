@@ -57,12 +57,20 @@
     },
   };
 
-  function key(p) {
-    return p.x + "," + p.y;
+  const SWIPE_THRESHOLD = 16;
+
+  function swipeDir(dx, dy) {
+    if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? "right" : "left";
+    return dy > 0 ? "down" : "up";
+  }
+
+  function isSwipeIgnoreTarget(node) {
+    return !!(node && node.closest && node.closest("button, a, input, textarea, select, .touch-pad"));
   }
 
   function FanwenClassic(opts) {
     this.canvas = opts.canvas;
+    this.surface = opts.surface || opts.canvas;
     this.onState = opts.onState || function () {};
     this.onEnd = opts.onEnd || function () {};
     this.mode = MODES.classic;
@@ -80,26 +88,50 @@
     this._acc = 0;
     this._last = 0;
     this._onKey = this.handleKey.bind(this);
+    this._onPointerDown = this.handlePointerDown.bind(this);
+    this._onPointerMove = this.handlePointerMove.bind(this);
+    this._onPointerUp = this.handlePointerUp.bind(this);
     this._onTouchStart = this.handleTouchStart.bind(this);
+    this._onTouchMove = this.handleTouchMove.bind(this);
     this._onTouchEnd = this.handleTouchEnd.bind(this);
     this._loop = this.loop.bind(this);
+    this._swipe = null;
+    this._pointerId = null;
+    this._fromPointer = false;
     this.reset();
   }
 
   FanwenClassic.prototype.attachInput = function () {
     if (this._attached) return;
     this._attached = true;
+    const surface = this.surface;
     document.addEventListener("keydown", this._onKey);
-    this.canvas.addEventListener("touchstart", this._onTouchStart, { passive: false });
-    this.canvas.addEventListener("touchend", this._onTouchEnd, { passive: false });
+    surface.addEventListener("pointerdown", this._onPointerDown);
+    surface.addEventListener("pointermove", this._onPointerMove);
+    surface.addEventListener("pointerup", this._onPointerUp);
+    surface.addEventListener("pointercancel", this._onPointerUp);
+    surface.addEventListener("lostpointercapture", this._onPointerUp);
+    surface.addEventListener("touchstart", this._onTouchStart, { passive: false });
+    surface.addEventListener("touchmove", this._onTouchMove, { passive: false });
+    surface.addEventListener("touchend", this._onTouchEnd, { passive: false });
+    surface.addEventListener("touchcancel", this._onTouchEnd, { passive: false });
   };
 
   FanwenClassic.prototype.detachInput = function () {
     if (!this._attached) return;
     this._attached = false;
+    const surface = this.surface;
     document.removeEventListener("keydown", this._onKey);
-    this.canvas.removeEventListener("touchstart", this._onTouchStart);
-    this.canvas.removeEventListener("touchend", this._onTouchEnd);
+    surface.removeEventListener("pointerdown", this._onPointerDown);
+    surface.removeEventListener("pointermove", this._onPointerMove);
+    surface.removeEventListener("pointerup", this._onPointerUp);
+    surface.removeEventListener("pointercancel", this._onPointerUp);
+    surface.removeEventListener("lostpointercapture", this._onPointerUp);
+    surface.removeEventListener("touchstart", this._onTouchStart);
+    surface.removeEventListener("touchmove", this._onTouchMove);
+    surface.removeEventListener("touchend", this._onTouchEnd);
+    surface.removeEventListener("touchcancel", this._onTouchEnd);
+    this.endSwipe();
   };
 
   FanwenClassic.prototype.setMode = function (id) {
@@ -705,9 +737,85 @@
   };
 
   FanwenClassic.prototype.setDirection = function (dir) {
-    if (!DIRS[dir] || !this.running || this.paused) return;
+    if (!DIRS[dir] || this.ended || this.paused) return;
+    /* 倒數中也先記住方向，開局第一格就能轉。尚未按開始則不收。 */
+    if (!this.running) return;
     if (dir === OPPOSITE[this.dir]) return;
     this.pendingDir = dir;
+  };
+
+  FanwenClassic.prototype.beginSwipe = function (x, y, target) {
+    if (isSwipeIgnoreTarget(target)) {
+      this._swipe = null;
+      return false;
+    }
+    this._swipe = { x: x, y: y };
+    return true;
+  };
+
+  FanwenClassic.prototype.moveSwipe = function (x, y) {
+    if (!this._swipe) return;
+    const dx = x - this._swipe.x;
+    const dy = y - this._swipe.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_THRESHOLD) return;
+    this.setDirection(swipeDir(dx, dy));
+    /* 起點重設，同一劃可以再轉一次彎。 */
+    this._swipe.x = x;
+    this._swipe.y = y;
+  };
+
+  FanwenClassic.prototype.endSwipe = function () {
+    this._swipe = null;
+    this._pointerId = null;
+    this._fromPointer = false;
+  };
+
+  FanwenClassic.prototype.handlePointerDown = function (e) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    if (!this.beginSwipe(e.clientX, e.clientY, e.target)) return;
+    this._fromPointer = true;
+    this._pointerId = e.pointerId;
+    if (this.surface.setPointerCapture) {
+      try {
+        this.surface.setPointerCapture(e.pointerId);
+      } catch (err) {
+        /* 舊瀏覽器沒有 capture 也不影響轉向 */
+      }
+    }
+  };
+
+  FanwenClassic.prototype.handlePointerMove = function (e) {
+    if (!this._fromPointer || e.pointerId !== this._pointerId) return;
+    this.moveSwipe(e.clientX, e.clientY);
+  };
+
+  FanwenClassic.prototype.handlePointerUp = function (e) {
+    if (e && this._pointerId !== null && e.pointerId !== this._pointerId) return;
+    this.endSwipe();
+  };
+
+  FanwenClassic.prototype.handleTouchStart = function (e) {
+    if (isSwipeIgnoreTarget(e.target)) return;
+    if (e.cancelable) e.preventDefault();
+    if (e.touches.length !== 1) return;
+    if (this._fromPointer) return;
+    this.beginSwipe(e.touches[0].clientX, e.touches[0].clientY, e.target);
+  };
+
+  FanwenClassic.prototype.handleTouchMove = function (e) {
+    if (!this._swipe && !this._fromPointer) return;
+    if (e.cancelable) e.preventDefault();
+    if (this._fromPointer || !this._swipe) return;
+    const t = e.touches[0];
+    if (t) this.moveSwipe(t.clientX, t.clientY);
+  };
+
+  FanwenClassic.prototype.handleTouchEnd = function (e) {
+    if (this._fromPointer || this._swipe) {
+      if (e.cancelable) e.preventDefault();
+    }
+    if (this._fromPointer) return;
+    this.endSwipe();
   };
 
   FanwenClassic.prototype.handleKey = function (e) {
@@ -715,24 +823,6 @@
     if (!dir) return;
     e.preventDefault();
     this.setDirection(dir);
-  };
-
-  FanwenClassic.prototype.handleTouchStart = function (e) {
-    if (e.touches.length !== 1) return;
-    e.preventDefault();
-    this._touch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  };
-
-  FanwenClassic.prototype.handleTouchEnd = function (e) {
-    if (!this._touch) return;
-    e.preventDefault();
-    const t = e.changedTouches[0];
-    const dx = t.clientX - this._touch.x;
-    const dy = t.clientY - this._touch.y;
-    this._touch = null;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
-    if (Math.abs(dx) > Math.abs(dy)) this.setDirection(dx > 0 ? "right" : "left");
-    else this.setDirection(dy > 0 ? "down" : "up");
   };
 
   FanwenClassic.MODES = MODES;

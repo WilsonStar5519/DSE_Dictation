@@ -610,6 +610,19 @@ button {
 .screen-game {
   padding-left: 10px;
   padding-right: 10px;
+  overscroll-behavior: none;
+}
+
+.screen-game.is-playing {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.screen-game.is-playing button,
+.screen-game.is-playing a,
+.screen-game.is-playing .touch-pad {
+  touch-action: manipulation;
 }
 
 .game-bar {
