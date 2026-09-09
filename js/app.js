@@ -47,7 +47,7 @@
       id: "duel",
       badge: "伍",
       name: "同機雙人",
-      desc: "一機兩人：朱蛇用方向鍵，青蛇用 A／D，最後生存者勝。",
+      desc: "一機兩人：朱蛇用方向鍵，青蛇用 A／D。九十秒計時，被撞倒即刻復活，鐘響比分數。",
       tag: "雙人",
       engine: "arena",
       layout: "local2",
@@ -58,7 +58,7 @@
       id: "online",
       badge: "陸",
       name: "連線對戰",
-      desc: "開房間取得四位房間號，遠方的朋友輸入即可同場較量。",
+      desc: "開房間取得四位房間號，遠方的朋友輸入即可同場較量，九十秒定勝負。",
       tag: "連線",
       engine: "arena",
       layout: "online",
@@ -72,8 +72,8 @@
     timed: ["score", "best", "next", "progress", "time", "mistakes"],
     strict: ["score", "best", "next", "progress", "combo", "mistakes"],
     arena: ["score", "best", "next", "progress", "kills", "length"],
-    duel: ["score", "next", "combo", "kills", "length"],
-    online: ["score", "next", "combo", "kills", "length"],
+    duel: ["score", "time", "next", "kills", "length"],
+    online: ["score", "time", "next", "kills", "length"],
   };
 
   const el = function (id) {
@@ -416,9 +416,9 @@
 
     if (result.versus) {
       grade.hidden = false;
-      grade.setAttribute("data-grade", "勝");
-      grade.innerHTML = "<span>勝</span>";
-      el("result-title").textContent = result.winnerName + " 勝出";
+      grade.setAttribute("data-grade", result.draw ? "和" : "勝");
+      grade.innerHTML = "<span>" + (result.draw ? "和" : "勝") + "</span>";
+      el("result-title").textContent = result.draw ? "不分勝負" : result.winnerName + " 勝出";
       el("result-reason").textContent = result.modeName + " · " + result.workLabel;
       const top = result.players.slice().sort(function (a, b) {
         return b.score - a.score;
@@ -427,16 +427,13 @@
       el("result-record").hidden = true;
       stats.innerHTML = result.players
         .map(function (p) {
-          return statRow(
-            p.name + (p.dead ? "（歿）" : ""),
-            p.score + " 分",
-            p.name === result.winnerName ? "gold" : ""
-          );
+          return statRow(p.name, p.score + " 分", p.name === result.winnerName ? "gold" : "");
         })
         .join("")
         .concat(
           statRow("吃對字", result.players[0].correct + " / " + result.players[1].correct),
           statRow("擊殺", result.players[0].kills + " / " + result.players[1].kills),
+          statRow("陣亡", (result.players[0].deaths || 0) + " / " + (result.players[1].deaths || 0)),
           statRow("對局時間", result.seconds + " 秒")
         );
     } else {

@@ -49,12 +49,13 @@
     return d;
   }
 
+  /* 身體要隨體積變粗、但別無限變長，否則長大後只是一條細麵。 */
   function headRadius(mass) {
-    return 7 + Math.min(13, mass * 0.085);
+    return 8 + Math.min(21, mass * 0.13);
   }
 
   function trailPixels(mass) {
-    return 110 + mass * 7;
+    return 120 + mass * 3.2;
   }
 
   function Snake(cfg) {
@@ -147,7 +148,10 @@
     this.work = cfg.work || null;
     this.chars = this.work ? Data.workChars(this.work) : [];
     this.botCount = cfg.botCount === undefined ? 5 : cfg.botCount;
-    this.radius = this.layout === "solo" ? 1250 : 780;
+    /* 對戰是全場視角，場地要小一點，蛇才不會看起來細如絲線。 */
+    this.radius = this.layout === "solo" ? 1250 : 500;
+    /* 對戰採計時制：被撞倒可復活，鐘響時比分數，不會一撞就散場。 */
+    this.duration = this.layout === "solo" ? 0 : cfg.duration || 90;
     this.playerNames = cfg.playerNames || ["朱蛇", "青蛇"];
     this.isHost = cfg.isHost !== false;
     this.isGuest = !this.isHost;
@@ -158,6 +162,16 @@
     this.snakes = [];
     this.food = [];
     this.startLoop();
+  };
+
+  /** 對戰場較小，身體也要按比例縮短。 */
+  FanwenArena.prototype.trailFor = function (mass) {
+    return this.layout === "solo" ? trailPixels(mass) : 80 + mass * 1.9;
+  };
+
+  /** 電腦蛇的體積上限：免得在小場地裡一條蛇塞滿全場。 */
+  FanwenArena.prototype.botMassCap = function () {
+    return this.layout === "solo" ? 320 : 78;
   };
 
   FanwenArena.prototype.randomSpot = function (margin) {
@@ -381,7 +395,7 @@
         head.x = snake.x;
         head.y = snake.y;
       }
-      const maxPoints = Math.max(12, Math.round(trailPixels(snake.mass) / SPACING));
+      const maxPoints = Math.max(12, Math.round(self.trailFor(snake.mass) / SPACING));
       while (snake.points.length > maxPoints) snake.points.pop();
     });
 
@@ -391,18 +405,40 @@
       const hr = headRadius(snake.mass);
       const fromCentre = Math.sqrt(snake.x * snake.x + snake.y * snake.y);
       if (fromCentre > self.radius - hr) {
-        /* 護盾期間只把蛇推回場內，並轉向圓心，不判死。 */
-        if (snake.shield > 0) {
+        /* 護盾期間，或對戰場的結界：只把蛇推回場內，不判死。 */
+        if (snake.shield > 0 || self.layout !== "solo") {
           const k = (self.radius - hr - 2) / (fromCentre || 1);
           snake.x *= k;
           snake.y *= k;
-          snake.angle = Math.atan2(-snake.y, -snake.x);
-          snake.pointerAngle = null;
+          const outward = Math.atan2(snake.y, snake.x);
+          if (snake.shield > 0) {
+            snake.angle = outward + Math.PI;
+            snake.pointerAngle = null;
+          } else {
+            /* 沿著結界擦身而過，並削去一點身長，賴在牆邊沒有好處。 */
+            const side = angleDiff(snake.angle, outward) > 0 ? 1 : -1;
+            const tangent = outward + (side * Math.PI) / 2;
+            const inward = outward + Math.PI;
+            snake.angle = Math.atan2(
+              Math.sin(tangent) * 0.86 + Math.sin(inward) * 0.5,
+              Math.cos(tangent) * 0.86 + Math.cos(inward) * 0.5
+            );
+            if (snake.pointerAngle !== null && Math.abs(angleDiff(snake.pointerAngle, outward)) < 1.1) {
+              snake.pointerAngle = null;
+            }
+            snake.turn = 0;
+            snake.mass = Math.max(22, snake.mass - 26 * dt);
+            if (snake.isLocal && !snake.isBot && !snake._bumpAt) {
+              snake._bumpAt = 1;
+              Audio.wrong();
+            }
+          }
           return;
         }
         self.killSnake(snake, null, "撞到結界");
         return;
       }
+      snake._bumpAt = 0;
       if (snake.shield > 0) return;
       for (let i = 0; i < self.snakes.length; i++) {
         const other = self.snakes[i];
@@ -444,6 +480,7 @@
           snake.combo = 0;
           if (snake.isLocal && !snake.isBot) Audio.eat();
         }
+        if (snake.isBot) snake.mass = Math.min(self.botMassCap(), snake.mass);
       }
     });
 
@@ -452,13 +489,18 @@
     let guard = 0;
     while (this.food.length < target && guard++ < 6) this.spawnFood();
 
-    const alivePlayers = this.snakes.filter(function (s) {
-      return !s.isBot && !s.dead;
-    });
     if (this.layout === "solo") {
-      if (!alivePlayers.length) this.finish();
-    } else if (alivePlayers.length <= 1) {
-      this.finish();
+      const stillAlive = this.snakes.some(function (s) {
+        return !s.isBot && !s.dead;
+      });
+      if (!stillAlive) this.finish();
+    } else {
+      this.snakes.forEach(function (s) {
+        if (s.isBot || !s.dead) return;
+        s.respawnIn = (s.respawnIn === null || s.respawnIn === undefined ? 2.6 : s.respawnIn) - dt;
+        if (s.respawnIn <= 0) self.respawnPlayer(s);
+      });
+      if (this.duration && this.elapsed >= this.duration * 1000) this.finish();
     }
 
     if (this.layout === "solo") {
@@ -477,6 +519,31 @@
       deadBots.forEach(function (bot) {
         bot.respawnIn = (bot.respawnIn || 3) - dt;
         if (bot.respawnIn <= 0) self.respawnBot(bot);
+      });
+    }
+  };
+
+  /** 對戰復活：保留分數與背默進度，只把身體與位置重置。 */
+  FanwenArena.prototype.respawnPlayer = function (snake) {
+    const pose = this.spawnPose(0.34);
+    snake.dead = false;
+    snake.respawnIn = null;
+    snake.deathReason = null;
+    snake.x = pose.x;
+    snake.y = pose.y;
+    snake.angle = pose.angle;
+    snake.pointerAngle = null;
+    snake.turn = 0;
+    snake.boost = false;
+    snake.mass = 24;
+    snake.combo = 0;
+    snake.deaths = (snake.deaths || 0) + 1;
+    snake.shield = 3.4;
+    snake.points = [];
+    for (let i = 0; i < 24; i++) {
+      snake.points.push({
+        x: snake.x - Math.cos(snake.angle) * i * SPACING,
+        y: snake.y - Math.sin(snake.angle) * i * SPACING,
       });
     }
   };
@@ -632,10 +699,8 @@
       return;
     }
 
-    const alive = players.filter(function (p) {
-      return !p.dead;
-    });
-    const winner = alive.length === 1 ? alive[0] : players[0].score >= players[1].score ? players[0] : players[1];
+    const draw = players[0].score === players[1].score;
+    const winner = players[0].score >= players[1].score ? players[0] : players[1];
     Audio.win();
     this.emitState();
     this.onEnd({
@@ -643,13 +708,15 @@
       modeName: this.layout === "online" ? "連線對戰" : "同機雙人",
       won: true,
       versus: true,
-      winnerName: winner.name,
+      draw: draw,
+      winnerName: draw ? null : winner.name,
       players: players.map(function (p) {
         return {
           name: p.name,
           score: p.score,
           correct: p.correct,
           kills: p.kills,
+          deaths: p.deaths || 0,
           length: Math.round(p.mass),
           dead: p.dead,
           color: p.color.light,
@@ -682,6 +749,9 @@
       state.charTotal = this.chars.length;
       state.charIndex = me.seqIndex;
       state.best = global.FanwenStore.getBest("arena", this.work ? this.work.id : "-");
+    }
+    if (this.duration) {
+      state.timeLeft = Math.max(0, Math.ceil(this.duration - this.elapsed / 1000));
     }
     if (this.layout !== "solo") {
       state.players = this.snakes
@@ -735,6 +805,7 @@
       k: snakes,
       f: food,
       n: guest ? this.expectedChar(guest) : null,
+      tl: this.duration ? Math.max(0, Math.ceil(this.duration - this.elapsed / 1000)) : null,
       e: this.ended ? 1 : 0,
     });
   };
@@ -759,6 +830,7 @@
       length: mine.m,
       kills: mine.kl || 0,
       combo: mine.cb || 0,
+      timeLeft: msg.tl === null || msg.tl === undefined ? undefined : msg.tl,
       nextChar: this.remoteNext || "—",
       players: (msg.k || [])
         .filter(function (s) {
@@ -800,7 +872,7 @@
 
     const zoom =
       this.layout === "solo"
-        ? Math.max(fit.w, fit.h) / 1150
+        ? Math.max(fit.w, fit.h) / 980
         : Math.min(fit.w, fit.h) / (this.radius * 2 + 90);
     this.camera.zoom = zoom;
     const camX = this.layout === "solo" ? this.camera.x : 0;
@@ -831,6 +903,17 @@
       ctx.moveTo(-R, g);
       ctx.lineTo(R, g);
       ctx.stroke();
+    }
+    /* 同心圓與雲紋，讓大場地不至於一片死黑 */
+    ctx.strokeStyle = "rgba(214, 178, 110, 0.1)";
+    for (let i = 1; i <= 3; i++) {
+      ctx.beginPath();
+      ctx.arc(0, 0, (R * i) / 4, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2 + 0.26;
+      D.cloud(ctx, Math.cos(a) * R * 0.62, Math.sin(a) * R * 0.62, 46, "#d6b26e", 0.08);
     }
     ctx.restore();
 
@@ -884,7 +967,7 @@
           if (s.d) return;
           const pts = [];
           for (let i = 0; i < s.p.length; i += 2) pts.push({ x: s.p[i], y: s.p[i + 1] });
-          this.drawSnakeBody(ctx, pts, s.m, { body: s.c, light: s.l }, false, zoom);
+          this.drawSnakeBody(ctx, pts, s.m, { body: s.c, light: s.l }, null, zoom);
           this.drawSnakeHead(ctx, s.x, s.y, s.a, s.m, { body: s.c, light: s.l }, s.n, zoom);
         }.bind(this)
       );
@@ -892,7 +975,14 @@
       this.snakes.forEach(
         function (s) {
           if (s.dead) return;
-          this.drawSnakeBody(ctx, s.points, s.mass, s.color, s.isLocal && !s.isBot, zoom);
+          this.drawSnakeBody(
+            ctx,
+            s.points,
+            s.mass,
+            s.color,
+            s.isLocal && !s.isBot ? s.eatenChars : null,
+            zoom
+          );
           this.drawSnakeHead(ctx, s.x, s.y, s.angle, s.mass, s.color, s.name, zoom);
           if (s.shield > 0) {
             ctx.save();
@@ -972,7 +1062,7 @@
 
   FanwenArena.prototype.drawPellet = function (ctx, x, y, char, isWant, pulse, view, zoom) {
     if (x < view.x0 || x > view.x1 || y < view.y0 || y > view.y1) return;
-    const r = isWant ? 11 : 8;
+    const r = isWant ? 14 : 10;
     if (isWant) {
       ctx.save();
       ctx.shadowColor = "rgba(232, 184, 74, 0.95)";
@@ -999,28 +1089,45 @@
     ctx.fillText(char, x, y + r * 0.06);
   };
 
-  FanwenArena.prototype.drawSnakeBody = function (ctx, points, mass, color, showChars, zoom) {
+  FanwenArena.prototype.drawSnakeBody = function (ctx, points, mass, color, chars, zoom) {
     if (points.length < 2) return;
     const width = headRadius(mass) * 1.7;
+    const trace = function () {
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+      ctx.stroke();
+    };
     ctx.save();
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.55)";
+    ctx.lineWidth = width + 3 / zoom;
+    trace();
     ctx.strokeStyle = color.body;
     ctx.lineWidth = width;
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
-    ctx.stroke();
+    trace();
     ctx.strokeStyle = color.light;
-    ctx.lineWidth = width * 0.42;
-    ctx.globalAlpha = 0.55;
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
-    ctx.stroke();
+    ctx.lineWidth = width * 0.38;
+    ctx.globalAlpha = 0.5;
+    trace();
     ctx.restore();
-    void showChars;
-    void zoom;
+
+    /* 自己吃過的字寫在身上，邊玩邊看見背默進度 */
+    if (chars && chars.length) {
+      ctx.save();
+      ctx.font = "700 " + width * 0.66 + "px " + D.SERIF;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(246, 239, 221, 0.95)";
+      const step = Math.max(3, Math.round((width * 1.05) / SPACING));
+      let ci = chars.length - 1;
+      for (let i = step; i < points.length && ci >= 0; i += step) {
+        ctx.fillText(chars[ci], points[i].x, points[i].y);
+        ci -= 1;
+      }
+      ctx.restore();
+    }
   };
 
   FanwenArena.prototype.drawSnakeHead = function (ctx, x, y, angle, mass, color, name, zoom) {
