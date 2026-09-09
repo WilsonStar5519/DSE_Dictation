@@ -6,101 +6,256 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#0e1016" />
+    <meta name="theme-color" content="#0f0b0a" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <title>範文貪食蛇</title>
-    <link rel="stylesheet" href="css/style.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23120d0c'/%3E%3Crect x='6' y='6' width='52' height='52' rx='9' fill='none' stroke='%23e8b84a' stroke-width='3'/%3E%3Ctext x='32' y='44' font-family='serif' font-size='34' font-weight='700' text-anchor='middle' fill='%23e8b84a'%3E%E7%AF%84%3C/text%3E%3C/svg%3E"
+    />
+    <meta
+      name="description"
+      content="中文 DSE 指定文言經典十二篇背默遊戲：經典背默、休閒模式與零錯挑戰。"
+    />
+    <title>範文貪食蛇 · 十二篇背默街機</title>
+    <link rel="stylesheet" href="css/style.css?v=20260911c" />
   </head>
   <body>
+    <div class="crt" aria-hidden="true"></div>
+
+    <!-- ───────────────────────────── 主頁 ───────────────────────────── -->
     <section id="screen-home" class="screen active">
-      <div class="shell">
-        <header class="brand">
-          <h1>範文貪食蛇</h1>
-          <p>按詩句順序吃字，背默十二篇範文</p>
+      <div class="cabinet">
+        <header class="hero">
+          <p class="hero-coin">投 幣 入 局　·　INSERT COIN</p>
+          <div class="hero-plate">
+            <h1 class="hero-title" data-text="範文貪食蛇">範文貪食蛇</h1>
+            <div class="hero-seal" aria-hidden="true">
+              <span>範</span><span>文</span>
+            </div>
+          </div>
+          <p class="hero-sub">中文 DSE 指定文言經典 · 十二篇背默街機</p>
+          <div class="hero-rule" aria-hidden="true">
+            <span></span><i>❖</i><span></span>
+          </div>
         </header>
-        <div id="home-list" class="card-list"></div>
+
+        <h2 class="section-label"><span>選　模　式</span></h2>
+        <div id="mode-grid" class="mode-grid"></div>
+
+        <footer class="home-foot">
+          <button id="btn-sound" class="chip" type="button">音效：開</button>
+          <button id="btn-help" class="chip" type="button">玩法說明</button>
+        </footer>
       </div>
     </section>
 
-    <section id="screen-collection" class="screen">
-      <div class="shell">
-        <header class="brand">
-          <h1 id="collection-title">詩三首</h1>
-          <p>選擇篇章開始背默</p>
+    <!-- ──────────────────────────── 選篇章 ──────────────────────────── -->
+    <section id="screen-chapters" class="screen">
+      <div class="cabinet">
+        <header class="page-head">
+          <button class="back-btn" type="button" data-back="home">← 返回</button>
+          <div>
+            <h2 id="chapters-title">選篇章</h2>
+            <p id="chapters-sub" class="page-sub">指定文言經典十二篇</p>
+          </div>
         </header>
-        <div id="collection-list" class="card-list"></div>
-        <button id="btn-back-collection" class="link-btn" type="button">
-          ← 返回主頁
+        <div id="chapter-grid" class="chapter-grid"></div>
+      </div>
+    </section>
+
+    <!-- ──────────────────────────── 選作品 ──────────────────────────── -->
+    <section id="screen-works" class="screen">
+      <div class="cabinet">
+        <header class="page-head">
+          <button class="back-btn" type="button" data-back="chapters">← 返回</button>
+          <div>
+            <h2 id="works-title">選篇目</h2>
+            <p id="works-sub" class="page-sub"></p>
+          </div>
+        </header>
+        <div id="work-grid" class="chapter-grid"></div>
+      </div>
+    </section>
+
+    <!-- ──────────────────────────── 連線房間 ─────────────────────────── -->
+    <section id="screen-room" class="screen">
+      <div class="cabinet">
+        <header class="page-head">
+          <button class="back-btn" type="button" data-back="home">← 返回</button>
+          <div>
+            <h2>連線對戰</h2>
+            <p class="page-sub">同一個房間號，兩地對決</p>
+          </div>
+        </header>
+
+        <div class="room-panel">
+          <div class="room-half">
+            <h3>開房間</h3>
+            <p class="room-note">由你負責運算對局，把房間號給對手。</p>
+            <button id="btn-room-host" class="btn btn-primary" type="button">建立房間</button>
+            <div id="room-code-box" class="room-code" hidden>
+              <span class="room-code-label">房間號</span>
+              <strong id="room-code">————</strong>
+              <button id="btn-room-copy" class="chip" type="button">複製</button>
+            </div>
+          </div>
+          <div class="room-divider" aria-hidden="true"><span>或</span></div>
+          <div class="room-half">
+            <h3>加入房間</h3>
+            <p class="room-note">輸入對手給你的 4 位房間號。</p>
+            <input
+              id="room-input"
+              class="room-input"
+              type="text"
+              inputmode="latin"
+              autocomplete="off"
+              maxlength="4"
+              placeholder="例：K7QD"
+              aria-label="房間號"
+            />
+            <button id="btn-room-join" class="btn btn-ghost" type="button">加入</button>
+          </div>
+        </div>
+
+        <p id="room-status" class="room-status">尚未連線</p>
+        <button id="btn-room-start" class="btn btn-primary btn-wide" type="button" hidden>
+          選篇章並開戰
         </button>
       </div>
     </section>
 
-    <section id="screen-game" class="screen">
-      <header class="game-header">
-        <div class="game-title-row">
-          <h2 id="poem-title">〈山居秋暝〉</h2>
-          <span class="app-name">範文貪食蛇</span>
+    <!-- ───────────────────────────── 遊戲 ───────────────────────────── -->
+    <section id="screen-game" class="screen screen-game">
+      <header class="game-bar">
+        <button class="back-btn" type="button" data-back="auto">← 返回</button>
+        <div class="game-bar-mid">
+          <strong id="game-work">〈山居秋暝〉</strong>
+          <span id="game-mode" class="game-mode">經典背默</span>
         </div>
-        <div class="scoreboard">
-          <div class="stat">
-            <span class="label">分數</span>
-            <span id="stat-score" class="value">100</span>
-          </div>
-          <div class="stat">
-            <span class="label">吃錯</span>
-            <span id="stat-mistakes" class="value">0</span>
-          </div>
-          <div class="stat">
-            <span class="label">聯</span>
-            <span id="stat-couplet" class="value">1/4</span>
-          </div>
-        </div>
-        <div id="progress" class="progress" data-idle="1"></div>
+        <button id="btn-pause" class="back-btn" type="button">暫停</button>
       </header>
 
-      <div id="board-wrap" class="board-wrap">
-        <div id="board" class="board" aria-label="遊戲網格"></div>
+      <div id="hud" class="hud">
+        <div class="stat" data-stat="score">
+          <span class="stat-label">分數</span><span class="stat-value" id="stat-score">0</span>
+        </div>
+        <div class="stat" data-stat="best">
+          <span class="stat-label">最高</span><span class="stat-value" id="stat-best">0</span>
+        </div>
+        <div class="stat stat-next" data-stat="next">
+          <span class="stat-label">下一字</span><span class="stat-value" id="stat-next">—</span>
+        </div>
+        <div class="stat" data-stat="progress">
+          <span class="stat-label">進度</span><span class="stat-value" id="stat-progress">1/4</span>
+        </div>
+        <div class="stat" data-stat="combo">
+          <span class="stat-label">連擊</span><span class="stat-value" id="stat-combo">0</span>
+        </div>
+        <div class="stat" data-stat="mistakes">
+          <span class="stat-label">吃錯</span><span class="stat-value" id="stat-mistakes">0</span>
+        </div>
+        <div class="stat" data-stat="time">
+          <span class="stat-label">剩餘</span><span class="stat-value" id="stat-time">90</span>
+        </div>
+        <div class="stat" data-stat="kills">
+          <span class="stat-label">擊殺</span><span class="stat-value" id="stat-kills">0</span>
+        </div>
+        <div class="stat" data-stat="length">
+          <span class="stat-label">身長</span><span class="stat-value" id="stat-length">24</span>
+        </div>
       </div>
 
+      <div id="stage-wrap" class="stage-wrap square">
+        <canvas id="stage" class="stage"></canvas>
+      </div>
+
+      <p id="recite" class="recite" data-empty="1"></p>
+
       <div class="controls">
-        <div class="difficulty">
-          <span class="label">難度</span>
-          <div class="seg" role="group" aria-label="難度">
+        <div id="speed-row" class="seg-row">
+          <span class="seg-label">速度</span>
+          <div class="seg" role="group" aria-label="速度">
             <button type="button" data-speed="slow">慢</button>
             <button type="button" data-speed="mid" class="active">中</button>
             <button type="button" data-speed="fast">快</button>
           </div>
         </div>
-        <div class="actions">
-          <button id="btn-start" class="btn btn-primary" type="button">
-            開始遊戲
-          </button>
-          <button id="btn-back-game" class="btn btn-ghost" type="button">
-            返回
-          </button>
+        <div class="action-row">
+          <button id="btn-start" class="btn btn-primary" type="button">開始</button>
+          <button id="btn-restart" class="btn btn-ghost" type="button">重來</button>
         </div>
-        <p class="hint">電腦：方向鍵或 WASD　手機：在網格上滑動</p>
+        <p id="hint" class="hint">電腦：方向鍵／WASD　手機：在畫面上滑動立刻轉向，或用下方按鈕</p>
       </div>
+
+      <div id="touch-pad" class="touch-pad" aria-hidden="true">
+        <button type="button" data-dir="up">▲</button>
+        <button type="button" data-dir="left">◀</button>
+        <button type="button" data-dir="right">▶</button>
+        <button type="button" data-dir="down">▼</button>
+      </div>
+      <button id="touch-boost" class="touch-boost" type="button" hidden>加速</button>
     </section>
 
-    <div id="overlay" class="overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <!-- ──────────────────────────── 結算畫面 ─────────────────────────── -->
+    <div id="overlay-result" class="overlay" role="dialog" aria-modal="true" aria-hidden="true">
       <div class="modal">
-        <h3 id="overlay-title">遊戲結束</h3>
-        <p id="overlay-score" class="final-score">得分 100</p>
-        <p id="overlay-detail">吃錯 0 次</p>
-        <div class="actions">
-          <button id="btn-overlay-restart" class="btn btn-primary" type="button">
-            重新開始
-          </button>
-          <button id="btn-overlay-home" class="btn btn-ghost" type="button">
-            返回主頁
-          </button>
+        <div id="result-grade" class="grade-seal"><span>甲</span></div>
+        <h3 id="result-title">遊戲結束</h3>
+        <p id="result-reason" class="result-reason">撞到牆壁</p>
+        <div class="score-plate">
+          <span class="score-plate-label">得分</span>
+          <strong id="result-score">0</strong>
+        </div>
+        <p id="result-record" class="result-record" hidden>★ 新紀錄 ★</p>
+        <dl id="result-stats" class="result-stats"></dl>
+        <div class="modal-actions">
+          <button id="btn-again" class="btn btn-primary" type="button">再來一次</button>
+          <button id="btn-from-start" class="btn btn-ghost" type="button" hidden>從頭背默</button>
+          <button id="btn-change" class="btn btn-ghost" type="button">換篇章</button>
+          <button id="btn-home" class="btn btn-ghost" type="button">回主頁</button>
         </div>
       </div>
     </div>
 
-    <script src="js/poems.js"></script>
-    <script src="js/game.js"></script>
-    <script src="js/app.js"></script>
+    <!-- ──────────────────────────── 玩法說明 ─────────────────────────── -->
+    <div id="overlay-help" class="overlay" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="modal modal-text">
+        <h3>玩法說明</h3>
+        <div class="help-body">
+          <h4>共通</h4>
+          <p>
+            畫面上的字牌是範文的字，必須依原文順序吃字。吃對會變長並加分，吃錯會扣分。
+            手機可在遊戲畫面上一劃就轉向，不必等手指離開；也可用畫面下方的方向鍵。
+          </p>
+          <h4>經典背默</h4>
+          <p>
+            方向鍵或 WASD 轉向，撞牆或咬到自己即結束。畫面上<strong>沒有</strong>金色提示，須憑記憶找出下一個字。
+            每完成一組句子會進入下一組；死亡後按「再來一次」會留在當前這組，不會退回第一組。
+          </p>
+          <h4>休閒模式</h4>
+          <p>
+            沒有時限，四邊可穿牆。<b class="gold">金色字牌</b>會提示下一個要吃的字，方便反覆溫習。
+          </p>
+          <h4>零錯挑戰</h4>
+          <p>
+            吃錯一個字即出局，沒有金色提示。死亡後按「再來一次」同樣會留在當前這組。
+          </p>
+        </div>
+        <div class="modal-actions">
+          <button id="btn-help-close" class="btn btn-primary" type="button">明白了</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/poems.js?v=20260911c"></script>
+    <script src="js/store.js?v=20260911c"></script>
+    <script src="js/audio.js?v=20260911c"></script>
+    <script src="js/draw.js?v=20260911c"></script>
+    <script src="js/classic.js?v=20260911c"></script>
+    <script src="js/arena.js?v=20260911c"></script>
+    <script src="js/vendor/peerjs.min.js?v=20260911c"></script>
+    <script src="js/net.js?v=20260911c"></script>
+    <script src="js/app.js?v=20260911c"></script>
   </body>
 </html>
