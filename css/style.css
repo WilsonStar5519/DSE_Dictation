@@ -1,0 +1,411 @@
+:root {
+  --bg: #0e1016;
+  --bg-elevated: #171a24;
+  --bg-cell: #1b1f2c;
+  --line: #2a3144;
+  --text: #eceaf4;
+  --muted: #9aa3b8;
+  --purple: #7b5cbf;
+  --purple-deep: #5a3d9a;
+  --head: #e56bff;
+  --food: #f0c94a;
+  --food-text: #2a2108;
+  --accent: #8b7cff;
+  --danger: #ff6b8a;
+  --ok: #5dde9f;
+  --shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  --radius: 16px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "PingFang HK", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei",
+    sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  min-height: 100dvh;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.screen {
+  display: none;
+  min-height: 100dvh;
+  padding: calc(20px + var(--safe-t)) 20px calc(24px + var(--safe-b));
+}
+
+.screen.active {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.shell {
+  width: min(480px, 100%);
+}
+
+.brand {
+  text-align: center;
+  margin: 12px 0 28px;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 1.7rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.brand p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.card-list {
+  display: grid;
+  gap: 12px;
+}
+
+.card {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #1d2230, #161925);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  text-align: left;
+  box-shadow: var(--shadow);
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.card:active {
+  transform: scale(0.98);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.card .kicker {
+  display: block;
+  color: var(--accent);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  margin-bottom: 4px;
+}
+
+.card .title {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.card .meta {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.link-btn {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 16px 8px 0;
+  font-size: 0.95rem;
+}
+
+.link-btn:hover {
+  color: var(--text);
+}
+
+.game-header {
+  width: min(480px, 100%);
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.game-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.game-title-row h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.game-title-row .app-name {
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+}
+
+.scoreboard {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.stat {
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.stat .label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+}
+
+.stat .value {
+  display: block;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.progress {
+  min-height: 3.2em;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-family: "Iwanmin", "Kaiti TC", "STKaiti", "KaiTi", "Songti TC", serif;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #ddd6ff;
+  word-break: break-all;
+}
+
+.progress[data-idle="1"]::after {
+  content: "按「開始遊戲」後，按詩句順序吃字。";
+  color: var(--muted);
+  font-family: "PingFang HK", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  font-size: 0.85rem;
+}
+
+.board-wrap {
+  width: min(92vw, calc(100dvh - 22rem), 480px);
+  aspect-ratio: 1;
+  margin: 4px auto 14px;
+  touch-action: none;
+  user-select: none;
+}
+
+.board {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(20, 1fr);
+  grid-template-rows: repeat(20, 1fr);
+  background: #12151f;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  container-type: inline-size;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Iwanmin", "Kaiti TC", "STKaiti", "KaiTi", "Songti TC", serif;
+  font-size: 13px;
+  font-size: 4.5cqi;
+  font-weight: 700;
+  line-height: 1;
+  border-right: 1px solid rgba(42, 49, 68, 0.45);
+  border-bottom: 1px solid rgba(42, 49, 68, 0.45);
+  background: var(--bg-cell);
+}
+
+.cell.snake {
+  background: var(--purple);
+  color: #f4edff;
+}
+
+.cell.snake-head {
+  background: var(--head);
+  color: #2a0830;
+  box-shadow: inset 0 0 0 2px #fff6;
+}
+
+.cell.food {
+  background: var(--food);
+  color: var(--food-text);
+}
+
+.controls {
+  width: min(480px, 100%);
+  display: grid;
+  gap: 12px;
+}
+
+.difficulty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.difficulty .label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.seg {
+  display: flex;
+  flex: 1;
+  background: #10131b;
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.seg button {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 8px 0;
+  font-size: 0.88rem;
+}
+
+.seg button.active {
+  background: var(--purple);
+  color: #fff;
+  font-weight: 700;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 10px;
+}
+
+.btn {
+  border: 0;
+  border-radius: 12px;
+  padding: 13px 12px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-ghost {
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 16, 0.72);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 20;
+}
+
+.overlay.active {
+  display: flex;
+}
+
+.modal {
+  width: min(360px, 100%);
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 28px 22px 22px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.modal h3 {
+  margin: 0 0 8px;
+  font-size: 1.6rem;
+}
+
+.overlay.win .modal h3 {
+  color: var(--ok);
+}
+
+.overlay.lose .modal h3 {
+  color: var(--danger);
+}
+
+.modal p {
+  margin: 6px 0;
+  color: var(--muted);
+}
+
+.modal .final-score {
+  color: var(--text);
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 12px 0 18px;
+}
+
+.modal .actions {
+  grid-template-columns: 1fr 1fr;
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+@media (min-width: 720px) {
+  .board-wrap {
+    width: min(520px, calc(100dvh - 20rem));
+  }
+
+  .cell {
+    font-size: 18px;
+  }
+}
