@@ -805,8 +805,10 @@
     if (!this.running) return;
     const base = this.dirQueue.length ? this.dirQueue[this.dirQueue.length - 1] : this.dir;
     if (dir === OPPOSITE[base] || dir === base) return;
-    if (this.dirQueue.length >= 2) this.dirQueue[1] = dir;
-    else this.dirQueue.push(dir);
+    if (this.dirQueue.length >= 2) {
+      if (dir === OPPOSITE[this.dirQueue[0]]) return;
+      this.dirQueue[1] = dir;
+    } else this.dirQueue.push(dir);
     this.pendingDir = this.dirQueue[0] || this.dir;
   };
 
