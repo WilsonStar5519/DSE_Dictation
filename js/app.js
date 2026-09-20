@@ -283,8 +283,8 @@
   function openGame(target, opts) {
     work = target;
     engineKind = mode.engine;
-    el("game-work").textContent = Data.workLabel(target);
-    el("game-mode").textContent = mode.name;
+    el("game-work").textContent = target.part ? "《" + target.title + "》" : Data.workLabel(target);
+    el("game-mode").textContent = target.part ? mode.name + " · " + target.part : mode.name;
     applyHudVisibility();
     resultOverlay.classList.remove("active", "win");
     resultOverlay.setAttribute("aria-hidden", "true");
