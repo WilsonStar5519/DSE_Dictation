@@ -1165,7 +1165,7 @@ html.game-playing .touch-pad {
     max-width: none;
     aspect-ratio: 1;
     align-self: start;
-    margin: 0;
+    margin: 0 0 10px;
   }
 
   .screen-game.has-dpad .touch-pad.on,
