@@ -9,6 +9,9 @@
 
   const GRID = 20;
   const SPEEDS = { slow: 200, mid: 140, fast: 95 };
+  const MAX_LIVES = 3;
+  const INVULN_MS = 1500;
+  const STICK_DEADZONE = 18;
   const DIRS = {
     up: { x: 0, y: -1 },
     down: { x: 0, y: 1 },
@@ -36,6 +39,7 @@
       zero: false,
       hint: false,
       keepCanvas: true,
+      lives: true,
     },
     leisure: {
       id: "leisure",
@@ -57,7 +61,7 @@
     },
   };
 
-  const SWIPE_THRESHOLD = 16;
+  const SWIPE_THRESHOLD = 12;
 
   function key(p) {
     return p.x + "," + p.y;
@@ -75,6 +79,7 @@
   function FanwenClassic(opts) {
     this.canvas = opts.canvas;
     this.surface = opts.surface || opts.canvas;
+    this.stickEl = opts.stick || null;
     this.onState = opts.onState || function () {};
     this.onEnd = opts.onEnd || function () {};
     this.mode = MODES.classic;
@@ -103,6 +108,11 @@
     this._swipe = null;
     this._pointerId = null;
     this._fromPointer = false;
+    this._stick = null;
+    this.control = "swipe";
+    this.dirQueue = [];
+    this.lives = MAX_LIVES;
+    this.invulnUntil = 0;
     this.reset();
   }
 
@@ -174,6 +184,7 @@
     });
     this.dir = "right";
     this.pendingDir = "right";
+    this.dirQueue = [];
     this.grow = 0;
   };
 
@@ -191,6 +202,8 @@
     this.startedAt = 0;
     this.elapsed = 0;
     this.countdown = 0;
+    this.invulnUntil = 0;
+    this.lives = this.mode && this.mode.lives ? MAX_LIVES : 0;
     this.resetSnake();
   };
 
@@ -244,6 +257,8 @@
     this.running = true;
     this.paused = false;
     this.countdown = 2400;
+    this.invulnUntil = 0;
+    this.lives = this.mode.lives ? MAX_LIVES : 0;
     this.startedAt = performance.now();
     this._acc = 0;
     this.startLoop();
@@ -360,7 +375,11 @@
   };
 
   FanwenClassic.prototype.tick = function () {
-    if (this.pendingDir && this.pendingDir !== OPPOSITE[this.dir]) {
+    if (this.dirQueue.length) {
+      const nextDir = this.dirQueue.shift();
+      if (nextDir && nextDir !== OPPOSITE[this.dir]) this.dir = nextDir;
+      this.pendingDir = this.dirQueue[0] || this.dir;
+    } else if (this.pendingDir && this.pendingDir !== OPPOSITE[this.dir]) {
       this.dir = this.pendingDir;
     }
     const step = DIRS[this.dir];
@@ -369,7 +388,7 @@
 
     if (next.x < 0 || next.y < 0 || next.x >= GRID || next.y >= GRID) {
       if (!this.mode.wrap) {
-        this.finish(false, "撞到牆壁");
+        this.hitHazard("撞到牆壁");
         return;
       }
       next = { x: (next.x + GRID) % GRID, y: (next.y + GRID) % GRID };
@@ -387,7 +406,7 @@
     for (let i = 0; i < this.snake.length; i++) {
       if (ignoreTail && i === this.snake.length - 1) continue;
       if (this.snake[i].x === next.x && this.snake[i].y === next.y) {
-        this.finish(false, "咬到自己");
+        this.hitHazard("咬到自己");
         return;
       }
     }
@@ -444,6 +463,29 @@
     this.saveCheckpoint();
   };
 
+  FanwenClassic.prototype.isInvulnerable = function () {
+    return performance.now() < this.invulnUntil;
+  };
+
+  FanwenClassic.prototype.hitHazard = function (reason) {
+    if (this.ended) return;
+    if (this.isInvulnerable()) return;
+    if (this.mode.lives) {
+      this.lives = Math.max(0, this.lives - 1);
+      this.flashUntil = performance.now() + 220;
+      this.invulnUntil = performance.now() + INVULN_MS;
+      this.combo = 0;
+      Audio.wrong();
+      if (this.lives <= 0) {
+        this.finish(false, reason);
+        return;
+      }
+      this.emitState();
+      return;
+    }
+    this.finish(false, reason);
+  };
+
   FanwenClassic.prototype.grade = function (won, accuracy) {
     if (won && this.mistakes === 0) return "甲上";
     if (won && accuracy >= 0.9) return "甲";
@@ -491,6 +533,7 @@
       best: record.best,
       isRecord: record.record,
       workLabel: Data.workLabel(this.work),
+      livesLeft: this.mode.lives ? this.lives : null,
     });
   };
 
@@ -533,6 +576,9 @@
       running: this.running,
       paused: this.paused,
       ended: this.ended,
+      lives: this.mode.lives ? this.lives : null,
+      maxLives: this.mode.lives ? MAX_LIVES : null,
+      invulnerable: this.mode.lives && this.isInvulnerable(),
       timeLeft: this.mode.limit
         ? Math.max(0, Math.ceil(this.mode.limit - this.elapsed / 1000))
         : null,
@@ -643,6 +689,10 @@
       };
     };
 
+    const blinkOff = this.isInvulnerable() && Math.floor(now / 90) % 2 === 0;
+    ctx.save();
+    if (this.isInvulnerable()) ctx.globalAlpha = blinkOff ? 0.28 : 0.82;
+
     for (let i = this.snake.length - 1; i >= 1; i--) {
       const pos = drawAt(i);
       const inset = cell * 0.08;
@@ -696,6 +746,7 @@
     ctx.beginPath();
     ctx.arc(cx + fx - ox, cy + fy - oy, eye, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
 
     ctx.restore();
 
@@ -743,20 +794,24 @@
     );
   };
 
+  FanwenClassic.prototype.setControl = function (id) {
+    this.control = id === "stick" || id === "dpad" ? id : "swipe";
+    if (this.control !== "stick") this.hideStick();
+  };
+
   FanwenClassic.prototype.setDirection = function (dir) {
     if (!DIRS[dir] || this.ended || this.paused) return;
     /* 倒數中也先記住方向，開局第一格就能轉。尚未按開始則不收。 */
     if (!this.running) return;
-    if (dir === OPPOSITE[this.dir]) return;
-    this.pendingDir = dir;
+    const base = this.dirQueue.length ? this.dirQueue[this.dirQueue.length - 1] : this.dir;
+    if (dir === OPPOSITE[base] || dir === base) return;
+    if (this.dirQueue.length >= 2) this.dirQueue[1] = dir;
+    else this.dirQueue.push(dir);
+    this.pendingDir = this.dirQueue[0] || this.dir;
   };
 
   FanwenClassic.prototype.shouldLockTouch = function () {
     return this.running && !this.ended;
-  };
-
-  FanwenClassic.prototype.hasQueuedTurn = function () {
-    return !!(this.pendingDir && this.pendingDir !== this.dir);
   };
 
   FanwenClassic.prototype.beginSwipe = function (x, y, target) {
@@ -774,21 +829,61 @@
     const dx = x - this._swipe.x;
     const dy = y - this._swipe.y;
     if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_THRESHOLD) return;
-    /* 對局中已排隊的轉彎要等蛇走完一格再收下一次；倒數中以後劃為準。 */
-    if (this.countdown <= 0 && this.hasQueuedTurn()) {
-      this._swipe.x = x;
-      this._swipe.y = y;
-      return;
-    }
     this.setDirection(swipeDir(dx, dy));
     this._swipe.x = x;
     this._swipe.y = y;
+  };
+
+  FanwenClassic.prototype.hideStick = function () {
+    this._stick = null;
+    if (!this.stickEl) return;
+    this.stickEl.hidden = true;
+    this.stickEl.classList.remove("on");
+  };
+
+  FanwenClassic.prototype.placeStick = function (x, y, knobX, knobY) {
+    if (!this.stickEl) return;
+    this.stickEl.hidden = false;
+    this.stickEl.classList.add("on");
+    this.stickEl.style.left = x + "px";
+    this.stickEl.style.top = y + "px";
+    const knob = this.stickEl.querySelector(".stick-knob");
+    if (knob) {
+      knob.style.transform = "translate(" + knobX + "px, " + knobY + "px)";
+    }
+  };
+
+  FanwenClassic.prototype.beginStick = function (x, y, target) {
+    if (!this.shouldLockTouch()) return false;
+    if (isSwipeIgnoreTarget(target)) {
+      this.hideStick();
+      return false;
+    }
+    this._stick = { x: x, y: y };
+    this.placeStick(x, y, 0, 0);
+    return true;
+  };
+
+  FanwenClassic.prototype.moveStick = function (x, y) {
+    if (!this._stick) return;
+    let dx = x - this._stick.x;
+    let dy = y - this._stick.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const max = 42;
+    if (dist > max) {
+      dx = (dx / dist) * max;
+      dy = (dy / dist) * max;
+    }
+    this.placeStick(this._stick.x, this._stick.y, dx, dy);
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < STICK_DEADZONE) return;
+    this.setDirection(swipeDir(dx, dy));
   };
 
   FanwenClassic.prototype.endSwipe = function () {
     this._swipe = null;
     this._pointerId = null;
     this._fromPointer = false;
+    this.hideStick();
   };
 
   FanwenClassic.prototype.lockTouchEvent = function (e) {
@@ -798,7 +893,11 @@
 
   FanwenClassic.prototype.handlePointerDown = function (e) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    if (!this.beginSwipe(e.clientX, e.clientY, e.target)) return;
+    const started =
+      this.control === "stick"
+        ? this.beginStick(e.clientX, e.clientY, e.target)
+        : this.beginSwipe(e.clientX, e.clientY, e.target);
+    if (!started) return;
     this._fromPointer = true;
     this._pointerId = e.pointerId;
     this.lockTouchEvent(e);
@@ -814,7 +913,8 @@
   FanwenClassic.prototype.handlePointerMove = function (e) {
     if (!this._fromPointer || e.pointerId !== this._pointerId) return;
     this.lockTouchEvent(e);
-    this.moveSwipe(e.clientX, e.clientY);
+    if (this.control === "stick") this.moveStick(e.clientX, e.clientY);
+    else this.moveSwipe(e.clientX, e.clientY);
   };
 
   FanwenClassic.prototype.handlePointerUp = function (e) {
@@ -827,14 +927,21 @@
     this.lockTouchEvent(e);
     if (e.touches.length !== 1) return;
     if (this._fromPointer) return;
-    this.beginSwipe(e.touches[0].clientX, e.touches[0].clientY, e.target);
+    const t = e.touches[0];
+    if (this.control === "stick") this.beginStick(t.clientX, t.clientY, e.target);
+    else this.beginSwipe(t.clientX, t.clientY, e.target);
   };
 
   FanwenClassic.prototype.handleTouchMove = function (e) {
     this.lockTouchEvent(e);
-    if (this._fromPointer || !this._swipe) return;
+    if (this._fromPointer) return;
     const t = e.touches[0];
-    if (t) this.moveSwipe(t.clientX, t.clientY);
+    if (!t) return;
+    if (this.control === "stick") {
+      if (this._stick) this.moveStick(t.clientX, t.clientY);
+    } else if (this._swipe) {
+      this.moveSwipe(t.clientX, t.clientY);
+    }
   };
 
   FanwenClassic.prototype.handleTouchEnd = function (e) {

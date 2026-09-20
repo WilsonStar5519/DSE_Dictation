@@ -646,6 +646,64 @@ html.game-playing .touch-pad {
   margin-bottom: 10px;
 }
 
+.game-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.icon-btn {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(214, 178, 110, 0.4);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #241b17, #141010);
+  color: var(--gold);
+}
+
+.icon-btn:active {
+  background: linear-gradient(180deg, #3a2b22, #1d1614);
+}
+
+.lives-hud {
+  display: flex;
+  gap: 4px;
+  padding: 0 2px;
+}
+
+.lives-hud[hidden] {
+  display: none !important;
+}
+
+.lives-hud span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ff8a78, #c8402f 62%, #7a1d16);
+  box-shadow: 0 0 8px rgba(226, 96, 74, 0.55);
+}
+
+.lives-hud span.off {
+  background: radial-gradient(circle at 35% 30%, #4a3b36, #2a211e);
+  box-shadow: none;
+  opacity: 0.45;
+}
+
+.lives-hud.hurt span.on {
+  animation: life-pulse 0.7s ease-in-out infinite;
+}
+
+@keyframes life-pulse {
+  50% {
+    transform: scale(1.12);
+    filter: brightness(1.25);
+  }
+}
+
 .game-bar-mid {
   text-align: center;
   line-height: 1.25;
@@ -737,7 +795,11 @@ html.game-playing .touch-pad {
 
 .stage-wrap.square {
   aspect-ratio: 1;
-  max-width: min(520px, 92vw, calc(100dvh - 21rem));
+  max-width: min(560px, 96vw, calc(100dvh - 12.5rem));
+}
+
+.screen-game.has-dpad .stage-wrap.square {
+  max-width: min(520px, 92vw, calc(100dvh - 16.5rem));
 }
 
 .stage-wrap.wide {
@@ -999,13 +1061,93 @@ html.game-playing .touch-pad {
   filter: brightness(1.25);
 }
 
+.touch-pad.on {
+  display: grid;
+}
+
 @media (pointer: coarse) {
-  .touch-pad.on {
-    display: grid;
-  }
   .touch-boost.on {
     display: block;
   }
+}
+
+.stick {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 118px;
+  height: 118px;
+  margin: -59px 0 0 -59px;
+  pointer-events: none;
+  z-index: 55;
+}
+
+.stick[hidden] {
+  display: none !important;
+}
+
+.stick-base,
+.stick-knob {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.stick-base {
+  inset: 0;
+  border: 2px solid rgba(232, 184, 74, 0.55);
+  background: rgba(18, 13, 12, 0.45);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45) inset, 0 8px 22px rgba(0, 0, 0, 0.35);
+}
+
+.stick-knob {
+  left: 50%;
+  top: 50%;
+  width: 52px;
+  height: 52px;
+  margin: -26px 0 0 -26px;
+  background: radial-gradient(circle at 35% 30%, #f0d68a, #c8402f 70%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.settings-seg {
+  margin: 0 0 12px;
+}
+
+.settings-note {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  color: var(--cream-dim);
+}
+
+.control-picks {
+  display: grid;
+  gap: 8px;
+}
+
+.control-picks button {
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid rgba(214, 178, 110, 0.35);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #241b17, #141010);
+  color: var(--cream);
+}
+
+.control-picks button.active {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px rgba(232, 184, 74, 0.35) inset;
+}
+
+.control-picks strong {
+  display: block;
+  font-family: var(--serif);
+  color: var(--gold);
+  margin-bottom: 2px;
+}
+
+.control-picks span {
+  font-size: 0.74rem;
+  color: var(--cream-dim);
 }
 
 /* ------------------------------------------------------------ 結算 */

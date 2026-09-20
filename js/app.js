@@ -9,7 +9,7 @@
       id: "classic",
       badge: "壹",
       name: "經典背默",
-      desc: "依範文順序吃字，畫面上沒有金色提示。撞牆或咬到自己即結束。死亡後再來一次會留在當前句組。",
+      desc: "依範文順序吃字，沒有金色提示。三顆心：撞牆或咬自己扣一命並短暫無敵，第三次才結束。再來一次會留在當前句組。",
       tag: "基本",
       engine: "classic",
       tone: "classic",
@@ -101,6 +101,14 @@
   const touchBoost = el("touch-boost");
   const resultOverlay = el("overlay-result");
   const helpOverlay = el("overlay-help");
+  const settingsOverlay = el("overlay-settings");
+  const livesHud = el("lives-hud");
+  const CONTROL_HINT = {
+    swipe: "電腦：方向鍵／WASD　手機：在畫面上滑動立刻轉向，可連排兩步",
+    stick: "電腦：方向鍵／WASD　手機：按住畫面拖動浮動控制桿",
+    dpad: "電腦：方向鍵／WASD　手機：用畫面下方方向鍵，也可滑動",
+  };
+  const CN_NUM = ["壹", "貳", "參", "肆", "伍", "陸", "柒", "捌", "玖", "拾"];
 
   let currentScreen = "home";
   let mode = MODES[0];
@@ -113,6 +121,7 @@
   const classic = new window.FanwenClassic({
     canvas: stage,
     surface: screens.game,
+    stick: el("stick"),
     onState: renderHud,
     onEnd: showResult,
   });
@@ -133,6 +142,7 @@
       arena.detachInput();
       screens.game.classList.remove("is-playing");
       document.documentElement.classList.remove("game-playing");
+      closeSettings(true);
     }
     Object.keys(screens).forEach(function (key) {
       screens[key].classList.toggle("active", key === name);
@@ -216,7 +226,7 @@
         col.title +
         '</span><span class="chapter-meta">' +
         col.subtitle +
-        (count > 1 ? " · " + count + " 篇" : "") +
+        (count > 1 ? " · " + count + " " + (col.unit || "篇") : "") +
         (best ? '　<span class="chapter-best">最高 ' + best + "</span>" : "") +
         "</span></span>";
       btn.addEventListener("click", function () {
@@ -235,21 +245,20 @@
     el("works-sub").textContent = col.subtitle;
     const grid = el("work-grid");
     grid.innerHTML = "";
-    col.works.forEach(function (item) {
+    col.works.forEach(function (item, i) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "chapter-card";
       const best = Store.getBest(mode.id, item.id);
+      const label = item.part || Data.workLabel(item);
+      const meta = (item.lead || item.author || "") + " · " + item.segments.length + " 組句";
       btn.innerHTML =
         '<span class="chapter-no">' +
-        (item.form || "篇") +
+        (item.part ? CN_NUM[i] || String(i + 1) : item.form || "篇") +
         '</span><span><span class="chapter-title">' +
-        Data.workLabel(item) +
+        label +
         '</span><span class="chapter-meta">' +
-        item.author +
-        " · " +
-        item.segments.length +
-        " 組句" +
+        meta +
         (best ? '　<span class="chapter-best">最高 ' + best + "</span>" : "") +
         "</span></span>";
       btn.addEventListener("click", function () {
@@ -283,17 +292,17 @@
     recite.dataset.empty = "1";
     recite.dataset.hint = mode.id === "leisure" ? "1" : "0";
 
-    el("speed-row").hidden = engineKind !== "classic";
-    touchPad.classList.toggle("on", engineKind === "classic");
+    applyControlUi();
     touchBoost.hidden = engineKind !== "arena";
     touchBoost.classList.toggle("on", engineKind === "arena");
     el("btn-pause").hidden = mode.layout === "online";
-    el("hint").textContent =
-      engineKind === "classic"
-        ? "電腦：方向鍵／WASD　手機：在畫面上滑動立刻轉向，或用下方按鈕"
-        : mode.id === "duel"
-        ? "朱蛇：← → 轉向、↑ 加速　　青蛇：A／D 轉向、W 加速"
-        : "滑鼠／手指指向就是前進方向，按住畫面可加速（消耗身長）";
+    el("btn-settings").hidden = engineKind !== "classic";
+    if (engineKind !== "classic") {
+      el("hint").textContent =
+        mode.id === "duel"
+          ? "朱蛇：← → 轉向、↑ 加速　　青蛇：A／D 轉向、W 加速"
+          : "滑鼠／手指指向就是前進方向，按住畫面可加速（消耗身長）";
+    }
 
     show("game");
 
@@ -390,6 +399,7 @@
     const playing = engineKind === "classic" && !!state.running && !state.ended;
     screens.game.classList.toggle("is-playing", playing);
     document.documentElement.classList.toggle("game-playing", playing);
+    renderLives(state);
 
     if (engineKind === "classic") {
       const text = state.progress || "";
@@ -471,6 +481,9 @@
         rows.push(statRow("身長", (result.length || 0) + ""));
       } else {
         rows.push(statRow("完成句組", result.segments + " / " + result.segmentTotal));
+        if (result.mode === "classic") {
+          rows.push(statRow("剩餘生命", (result.livesLeft != null ? result.livesLeft : 0) + " / 3"));
+        }
       }
       rows.push(statRow("用時", result.seconds + " 秒"));
       rows.push(statRow("最高分", result.best + "", "gold"));
@@ -495,6 +508,51 @@
     if (resultOverlay.contains(document.activeElement)) document.activeElement.blur();
     resultOverlay.classList.remove("active");
     resultOverlay.setAttribute("aria-hidden", "true");
+  }
+
+  function renderLives(state) {
+    if (!livesHud) return;
+    const show = engineKind === "classic" && mode.id === "classic" && state.lives != null;
+    livesHud.hidden = !show;
+    if (!show) return;
+    const max = state.maxLives || 3;
+    const n = Math.max(0, state.lives);
+    let html = "";
+    for (let i = 0; i < max; i++) {
+      html += '<span class="' + (i < n ? "on" : "off") + '"></span>';
+    }
+    livesHud.innerHTML = html;
+    livesHud.classList.toggle("hurt", n === 1 && !!state.running && !state.ended);
+  }
+
+  function applyControlUi() {
+    const scheme = Store.get("control", "swipe");
+    classic.setControl(scheme);
+    document.querySelectorAll("[data-control]").forEach(function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-control") === scheme);
+    });
+    const usePad = engineKind === "classic" && scheme === "dpad";
+    touchPad.classList.toggle("on", usePad);
+    screens.game.classList.toggle("has-dpad", usePad);
+    if (engineKind === "classic") {
+      el("hint").textContent = CONTROL_HINT[scheme] || CONTROL_HINT.swipe;
+    }
+  }
+
+  function openSettings() {
+    Audio.ui();
+    if (engineKind === "classic" && classic.running && !classic.paused && !classic.ended) {
+      classic.togglePause();
+    }
+    settingsOverlay.classList.add("active");
+    settingsOverlay.setAttribute("aria-hidden", "false");
+  }
+
+  function closeSettings(silent) {
+    if (settingsOverlay.contains(document.activeElement)) document.activeElement.blur();
+    settingsOverlay.classList.remove("active");
+    settingsOverlay.setAttribute("aria-hidden", "true");
+    if (!silent) applyControlUi();
   }
 
   /* ------------------------------------------------------------ 連線 */
@@ -617,6 +675,23 @@
     else arena.togglePause();
   });
 
+  el("btn-settings").addEventListener("click", function () {
+    openSettings();
+  });
+
+  el("btn-settings-close").addEventListener("click", function () {
+    Audio.ui();
+    closeSettings();
+  });
+
+  document.querySelectorAll("[data-control]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      Audio.ui();
+      Store.set("control", btn.getAttribute("data-control"));
+      applyControlUi();
+    });
+  });
+
   el("btn-again").addEventListener("click", function () {
     Audio.ui();
     closeResult();
@@ -733,6 +808,10 @@
       else arena.togglePause();
     } else if (e.key === "Escape") {
       e.preventDefault();
+      if (settingsOverlay.classList.contains("active")) {
+        closeSettings();
+        return;
+      }
       closeResult();
       show(mode.id === "online" ? "room" : "chapters");
     } else if (e.key === " " && engineKind === "classic" && !classic.running) {
@@ -754,6 +833,7 @@
   document.querySelectorAll("[data-speed]").forEach(function (btn) {
     btn.classList.toggle("active", btn.getAttribute("data-speed") === savedSpeed);
   });
+  applyControlUi();
 
   window.addEventListener("resize", function () {
     if (currentScreen === "game") {
@@ -768,7 +848,13 @@
     arena: arena,
     modes: MODES,
     current: function () {
-      return { mode: mode.id, engine: engineKind, workId: work && work.id, screen: currentScreen };
+      return {
+        mode: mode.id,
+        engine: engineKind,
+        workId: work && work.id,
+        screen: currentScreen,
+        control: Store.get("control", "swipe"),
+      };
     },
   };
 })();

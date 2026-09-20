@@ -18,7 +18,7 @@
       content="中文 DSE 指定文言經典十二篇背默遊戲：經典背默、休閒模式與零錯挑戰。"
     />
     <title>範文貪食蛇 · 十二篇背默街機</title>
-    <link rel="stylesheet" href="css/style.css?v=20260911c" />
+    <link rel="stylesheet" href="css/style.css?v=20260920a" />
   </head>
   <body>
     <div class="crt" aria-hidden="true"></div>
@@ -133,7 +133,18 @@
           <strong id="game-work">〈山居秋暝〉</strong>
           <span id="game-mode" class="game-mode">經典背默</span>
         </div>
-        <button id="btn-pause" class="back-btn" type="button">暫停</button>
+        <div class="game-bar-actions">
+          <div id="lives-hud" class="lives-hud" hidden aria-label="生命"></div>
+          <button id="btn-settings" class="icon-btn" type="button" aria-label="設定">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M19.4 13a7.7 7.7 0 0 0 .1-1 7.7 7.7 0 0 0-.1-1l2.1-1.6a.5.5 0 0 0 .1-.6l-2-3.5a.5.5 0 0 0-.6-.2l-2.5 1a7.4 7.4 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.4h-4a.5.5 0 0 0-.5.4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.5a.5.5 0 0 0 .1.6L4.6 11a7.7 7.7 0 0 0-.1 1 7.7 7.7 0 0 0 .1 1L2.5 14.6a.5.5 0 0 0-.1.6l2 3.5a.5.5 0 0 0 .6.2l2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6a.5.5 0 0 0 .5.4h4a.5.5 0 0 0 .5-.4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1a.5.5 0 0 0 .6-.2l2-3.5a.5.5 0 0 0-.1-.6zM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5z"
+              />
+            </svg>
+          </button>
+          <button id="btn-pause" class="back-btn" type="button">暫停</button>
+        </div>
       </header>
 
       <div id="hud" class="hud">
@@ -173,19 +184,11 @@
       <p id="recite" class="recite" data-empty="1"></p>
 
       <div class="controls">
-        <div id="speed-row" class="seg-row">
-          <span class="seg-label">速度</span>
-          <div class="seg" role="group" aria-label="速度">
-            <button type="button" data-speed="slow">慢</button>
-            <button type="button" data-speed="mid" class="active">中</button>
-            <button type="button" data-speed="fast">快</button>
-          </div>
-        </div>
         <div class="action-row">
           <button id="btn-start" class="btn btn-primary" type="button">開始</button>
           <button id="btn-restart" class="btn btn-ghost" type="button">重來</button>
         </div>
-        <p id="hint" class="hint">電腦：方向鍵／WASD　手機：在畫面上滑動立刻轉向，或用下方按鈕</p>
+        <p id="hint" class="hint">電腦：方向鍵／WASD　手機：在畫面上滑動立刻轉向</p>
       </div>
 
       <div id="touch-pad" class="touch-pad" aria-hidden="true">
@@ -195,6 +198,10 @@
         <button type="button" data-dir="down">▼</button>
       </div>
       <button id="touch-boost" class="touch-boost" type="button" hidden>加速</button>
+      <div id="stick" class="stick" hidden>
+        <div class="stick-base"></div>
+        <div class="stick-knob"></div>
+      </div>
     </section>
 
     <!-- ──────────────────────────── 結算畫面 ─────────────────────────── -->
@@ -218,6 +225,40 @@
       </div>
     </div>
 
+    <!-- ──────────────────────────── 設定 ───────────────────────────── -->
+    <div id="overlay-settings" class="overlay" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="modal modal-text">
+        <h3>設定</h3>
+        <div class="help-body">
+          <h4>速度</h4>
+          <div class="seg settings-seg" role="group" aria-label="速度">
+            <button type="button" data-speed="slow">慢</button>
+            <button type="button" data-speed="mid" class="active">中</button>
+            <button type="button" data-speed="fast">快</button>
+          </div>
+          <h4>操控</h4>
+          <p class="settings-note">格子蛇只認上下左右。可隨時更換。</p>
+          <div class="control-picks" role="group" aria-label="操控">
+            <button type="button" data-control="swipe" class="active">
+              <strong>滑動</strong>
+              <span>在畫面上滑動即轉，可連排兩步急轉</span>
+            </button>
+            <button type="button" data-control="stick">
+              <strong>浮動控制桿</strong>
+              <span>手指按下處出現四向桿，拖動轉向</span>
+            </button>
+            <button type="button" data-control="dpad">
+              <strong>方向鍵</strong>
+              <span>畫面下方十字鍵，適合不習慣滑動時</span>
+            </button>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="btn-settings-close" class="btn btn-primary" type="button">完成</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ──────────────────────────── 玩法說明 ─────────────────────────── -->
     <div id="overlay-help" class="overlay" role="dialog" aria-modal="true" aria-hidden="true">
       <div class="modal modal-text">
@@ -226,12 +267,12 @@
           <h4>共通</h4>
           <p>
             畫面上的字牌是範文的字，必須依原文順序吃字。吃對會變長並加分，吃錯會扣分。
-            手機可在遊戲畫面上一劃就轉向，不必等手指離開；也可用畫面下方的方向鍵。
+            手機可在設定選擇滑動、浮動控制桿或方向鍵；滑動支援連續兩步轉向。
           </p>
           <h4>經典背默</h4>
           <p>
-            方向鍵或 WASD 轉向，撞牆或咬到自己即結束。畫面上<strong>沒有</strong>金色提示，須憑記憶找出下一個字。
-            每完成一組句子會進入下一組；死亡後按「再來一次」會留在當前這組，不會退回第一組。
+            方向鍵或 WASD 轉向。有三顆心：撞牆或咬到自己各扣一命，並有短暫無敵，蛇不會停下；第三次碰撞才結束。
+            畫面上<strong>沒有</strong>金色提示。死亡後「再來一次」會留在當前句組。速度與操控請按右上齒輪。
           </p>
           <h4>休閒模式</h4>
           <p>
@@ -248,14 +289,14 @@
       </div>
     </div>
 
-    <script src="js/poems.js?v=20260911c"></script>
-    <script src="js/store.js?v=20260911c"></script>
-    <script src="js/audio.js?v=20260911c"></script>
-    <script src="js/draw.js?v=20260911c"></script>
-    <script src="js/classic.js?v=20260911c"></script>
-    <script src="js/arena.js?v=20260911c"></script>
-    <script src="js/vendor/peerjs.min.js?v=20260911c"></script>
-    <script src="js/net.js?v=20260911c"></script>
-    <script src="js/app.js?v=20260911c"></script>
+    <script src="js/poems.js?v=20260920a"></script>
+    <script src="js/store.js?v=20260920a"></script>
+    <script src="js/audio.js?v=20260920a"></script>
+    <script src="js/draw.js?v=20260920a"></script>
+    <script src="js/classic.js?v=20260920a"></script>
+    <script src="js/arena.js?v=20260920a"></script>
+    <script src="js/vendor/peerjs.min.js?v=20260920a"></script>
+    <script src="js/net.js?v=20260920a"></script>
+    <script src="js/app.js?v=20260920a"></script>
   </body>
 </html>
