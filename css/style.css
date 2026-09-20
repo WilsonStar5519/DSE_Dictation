@@ -798,8 +798,90 @@ html.game-playing .touch-pad {
   max-width: min(560px, 96vw, calc(100dvh - 12.5rem));
 }
 
+.play-dock {
+  position: relative;
+  width: min(680px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 0;
+}
+
+.screen-game.has-dpad {
+  justify-content: flex-start;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: calc(12px + var(--safe-b));
+}
+
+.screen-game.has-dpad .game-bar,
+.screen-game.has-dpad .hud {
+  margin-bottom: 8px;
+}
+
+.screen-game.has-dpad .hint {
+  display: none;
+}
+
+.screen-game.has-dpad .play-dock {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
 .screen-game.has-dpad .stage-wrap.square {
-  max-width: min(520px, 92vw, calc(100dvh - 16.5rem));
+  max-width: min(480px, 88vw, calc(100dvh - 21rem));
+  margin-bottom: 8px;
+}
+
+.screen-game.has-dpad.is-playing {
+  overflow: hidden;
+}
+
+.screen-game.has-dpad.is-playing .play-dock {
+  display: grid;
+  grid-template-columns: minmax(0, auto);
+  grid-template-areas:
+    "board"
+    "pad";
+  justify-content: center;
+  justify-items: stretch;
+  width: max-content;
+  max-width: 100%;
+}
+
+.screen-game.has-dpad.is-playing .stage-wrap {
+  grid-area: board;
+}
+
+.screen-game.has-dpad.is-playing .touch-pad {
+  grid-area: pad;
+}
+
+.screen-game.has-dpad.is-playing .stage-wrap.square {
+  max-width: min(540px, 94vw, calc(100dvh - 13rem));
+  margin-bottom: 8px;
+}
+
+.screen-game.has-dpad.is-playing .controls {
+  display: none;
+}
+
+.screen-game.has-dpad.is-playing .recite {
+  grid-area: board;
+  align-self: start;
+  z-index: 4;
+  width: 100%;
+  margin: 0;
+  min-height: 0;
+  max-height: 2.7em;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: 14px 14px 0 0;
+  border: 0;
+  border-left: 0;
+  background: linear-gradient(180deg, rgba(12, 9, 8, 0.92), rgba(12, 9, 8, 0.42));
 }
 
 .stage-wrap.wide {
@@ -1007,27 +1089,40 @@ html.game-playing .touch-pad {
 
 .touch-pad {
   display: none;
-  width: 168px;
-  margin: 4px auto 0;
+  width: min(248px, 78vw);
+  margin: 2px auto 6px;
   grid-template-columns: repeat(3, 1fr);
   grid-template-areas:
     ". up ."
     "left . right"
     ". down .";
-  gap: 6px;
+  gap: 8px;
+  flex: 0 0 auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  z-index: 5;
 }
 
 .touch-pad button {
-  padding: 12px 0;
-  border: 1px solid rgba(214, 178, 110, 0.4);
-  border-radius: 9px;
-  background: linear-gradient(180deg, #241b17, #141010);
+  min-height: 58px;
+  padding: 0;
+  border: 1px solid rgba(214, 178, 110, 0.5);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #2c221c, #141010);
   color: var(--gold);
-  font-size: 0.95rem;
+  font-size: 1.2rem;
+  pointer-events: none;
+  box-shadow: inset 0 1px 0 rgba(246, 239, 221, 0.08), 0 4px 0 #0d0a09;
 }
 
-.touch-pad button:active {
-  background: linear-gradient(180deg, #3a2b22, #1d1614);
+.touch-pad button:active,
+.touch-pad button.held {
+  background: linear-gradient(180deg, #4a372c, #241814);
+  color: #fff2cc;
+  box-shadow: inset 0 1px 0 rgba(246, 239, 221, 0.12), 0 2px 0 #0d0a09,
+    0 0 14px rgba(232, 184, 74, 0.35);
+  transform: translateY(1px);
 }
 
 .touch-pad [data-dir="up"] {
@@ -1041,6 +1136,108 @@ html.game-playing .touch-pad {
 }
 .touch-pad [data-dir="down"] {
   grid-area: down;
+}
+
+.touch-pad.on {
+  display: grid;
+}
+
+@media (min-width: 640px) {
+  .screen-game.has-dpad .play-dock,
+  .screen-game.has-dpad.is-playing .play-dock {
+    display: grid;
+    grid-template-columns: minmax(0, auto) auto;
+    grid-template-rows: auto auto;
+    grid-template-areas: none;
+    align-items: center;
+    justify-content: center;
+    gap: 10px 18px;
+    width: max-content;
+    max-width: 100%;
+  }
+
+  .screen-game.has-dpad .stage-wrap.square,
+  .screen-game.has-dpad.is-playing .stage-wrap.square {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    grid-area: unset;
+    max-width: min(560px, calc(100dvh - 8.5rem), 70vw);
+    margin: 0;
+  }
+
+  .screen-game.has-dpad .touch-pad.on,
+  .screen-game.has-dpad.is-playing .touch-pad {
+    grid-column: 2;
+    grid-row: 1;
+    grid-area: unset;
+    width: 220px;
+    margin: 0;
+  }
+
+  .screen-game.has-dpad .recite {
+    grid-column: 2;
+    grid-row: 2;
+    grid-area: unset;
+    width: 220px;
+    min-height: 0;
+  }
+
+  .screen-game.has-dpad.is-playing .recite {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    display: block;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .screen-game.has-dpad .hud {
+    margin-bottom: 6px;
+  }
+
+  .screen-game.has-dpad .play-dock,
+  .screen-game.has-dpad.is-playing .play-dock {
+    display: grid;
+    grid-template-columns: minmax(0, auto) auto;
+    grid-template-rows: auto;
+    grid-template-areas: none;
+    width: max-content;
+    max-width: 100%;
+    gap: 8px 14px;
+  }
+
+  .screen-game.has-dpad .stage-wrap.square,
+  .screen-game.has-dpad.is-playing .stage-wrap.square {
+    grid-column: 1;
+    grid-row: 1;
+    grid-area: unset;
+    max-width: min(420px, 58vw, calc(100dvh - 5.8rem));
+    margin: 0;
+  }
+
+  .screen-game.has-dpad .touch-pad.on,
+  .screen-game.has-dpad.is-playing .touch-pad {
+    grid-column: 2;
+    grid-row: 1;
+    grid-area: unset;
+    width: min(188px, 34vw);
+    margin: 0;
+  }
+
+  .screen-game.has-dpad .touch-pad button {
+    min-height: 46px;
+  }
+
+  .screen-game.has-dpad .recite,
+  .screen-game.has-dpad.is-playing .recite {
+    display: none;
+  }
+}
+
+@media (max-height: 720px) {
+  .screen-game.has-dpad .touch-pad button {
+    min-height: 50px;
+  }
 }
 
 .touch-boost {
@@ -1059,10 +1256,6 @@ html.game-playing .touch-pad {
 
 .touch-boost:active {
   filter: brightness(1.25);
-}
-
-.touch-pad.on {
-  display: grid;
 }
 
 @media (pointer: coarse) {

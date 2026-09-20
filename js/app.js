@@ -106,7 +106,7 @@
   const CONTROL_HINT = {
     swipe: "電腦：方向鍵／WASD　手機：在畫面上滑動立刻轉向，可連排兩步",
     stick: "電腦：方向鍵／WASD　手機：按住畫面拖動浮動控制桿",
-    dpad: "電腦：方向鍵／WASD　手機：用畫面下方方向鍵，也可滑動",
+    dpad: "電腦：方向鍵／WASD　手機：棋盤下方十字鍵，可按住連發或滑向新方向",
   };
   const CN_NUM = ["壹", "貳", "參", "肆", "伍", "陸", "柒", "捌", "玖", "拾"];
 
@@ -533,6 +533,7 @@
     });
     const usePad = engineKind === "classic" && scheme === "dpad";
     touchPad.classList.toggle("on", usePad);
+    touchPad.setAttribute("aria-hidden", usePad ? "false" : "true");
     screens.game.classList.toggle("has-dpad", usePad);
     if (engineKind === "classic") {
       el("hint").textContent = CONTROL_HINT[scheme] || CONTROL_HINT.swipe;
@@ -728,14 +729,88 @@
     });
   });
 
-  touchPad.querySelectorAll("[data-dir]").forEach(function (btn) {
-    const fire = function (e) {
+  (function bindDpad() {
+    let pointerId = null;
+    let heldDir = null;
+    let repeatTimer = 0;
+
+    function clearRepeat() {
+      if (repeatTimer) {
+        clearTimeout(repeatTimer);
+        repeatTimer = 0;
+      }
+    }
+
+    function highlight(dir) {
+      touchPad.querySelectorAll("[data-dir]").forEach(function (btn) {
+        btn.classList.toggle("held", btn.getAttribute("data-dir") === dir);
+      });
+    }
+
+    function dirFromEvent(e) {
+      const rect = touchPad.getBoundingClientRect();
+      const x = e.clientX - (rect.left + rect.width / 2);
+      const y = e.clientY - (rect.top + rect.height / 2);
+      const dead = Math.min(rect.width, rect.height) * 0.1;
+      if (Math.abs(x) < dead && Math.abs(y) < dead) return heldDir;
+      return Math.abs(x) >= Math.abs(y) ? (x >= 0 ? "right" : "left") : (y >= 0 ? "down" : "up");
+    }
+
+    function applyDir(dir) {
+      if (!dir) return;
+      heldDir = dir;
+      highlight(dir);
+      classic.setDirection(dir);
+    }
+
+    function startRepeat() {
+      clearRepeat();
+      repeatTimer = setTimeout(function tick() {
+        if (heldDir) classic.setDirection(heldDir);
+        repeatTimer = setTimeout(tick, 85);
+      }, 150);
+    }
+
+    function release() {
+      pointerId = null;
+      heldDir = null;
+      clearRepeat();
+      highlight(null);
+    }
+
+    touchPad.addEventListener("pointerdown", function (e) {
+      if (pointerId !== null) return;
+      if (!touchPad.classList.contains("on")) return;
       e.preventDefault();
-      classic.setDirection(btn.getAttribute("data-dir"));
-    };
-    btn.addEventListener("touchstart", fire, { passive: false });
-    btn.addEventListener("mousedown", fire);
-  });
+      pointerId = e.pointerId;
+      if (touchPad.setPointerCapture) {
+        try {
+          touchPad.setPointerCapture(e.pointerId);
+        } catch (err) {
+          /* 舊瀏覽器不一定支援 capture */
+        }
+      }
+      applyDir(dirFromEvent(e));
+      startRepeat();
+    });
+
+    touchPad.addEventListener("pointermove", function (e) {
+      if (e.pointerId !== pointerId) return;
+      e.preventDefault();
+      const dir = dirFromEvent(e);
+      if (dir && dir !== heldDir) {
+        applyDir(dir);
+        startRepeat();
+      }
+    });
+
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach(function (type) {
+      touchPad.addEventListener(type, function (e) {
+        if (e.pointerId !== pointerId) return;
+        release();
+      });
+    });
+  })();
 
   touchBoost.addEventListener("touchstart", function (e) {
     e.preventDefault();
