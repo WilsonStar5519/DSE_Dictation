@@ -821,7 +821,7 @@ html.game-playing .touch-pad {
   margin-bottom: 8px;
 }
 
-.screen-game.has-dpad .hint {
+.screen-game.has-dpad .recite[data-empty="1"] {
   display: none;
 }
 
@@ -1146,10 +1146,10 @@ html.game-playing .touch-pad {
   .screen-game.has-dpad .play-dock,
   .screen-game.has-dpad.is-playing .play-dock {
     display: grid;
-    grid-template-columns: minmax(0, auto) auto;
+    grid-template-columns: auto auto;
     grid-template-rows: auto auto;
     grid-template-areas: none;
-    align-items: center;
+    align-items: start;
     justify-content: center;
     gap: 10px 18px;
     width: max-content;
@@ -1158,26 +1158,30 @@ html.game-playing .touch-pad {
 
   .screen-game.has-dpad .stage-wrap.square,
   .screen-game.has-dpad.is-playing .stage-wrap.square {
+    grid-area: auto;
     grid-column: 1;
     grid-row: 1 / span 2;
-    grid-area: unset;
-    max-width: min(560px, calc(100dvh - 8.5rem), 70vw);
+    width: min(480px, calc(100dvh - 8.5rem), 58vw);
+    max-width: none;
+    aspect-ratio: 1;
+    align-self: start;
     margin: 0;
   }
 
   .screen-game.has-dpad .touch-pad.on,
   .screen-game.has-dpad.is-playing .touch-pad {
+    grid-area: auto;
     grid-column: 2;
-    grid-row: 1;
-    grid-area: unset;
+    grid-row: 1 / span 2;
+    align-self: center;
     width: 220px;
     margin: 0;
   }
 
   .screen-game.has-dpad .recite {
+    grid-area: auto;
     grid-column: 2;
     grid-row: 2;
-    grid-area: unset;
     width: 220px;
     min-height: 0;
   }
@@ -1198,7 +1202,7 @@ html.game-playing .touch-pad {
   .screen-game.has-dpad .play-dock,
   .screen-game.has-dpad.is-playing .play-dock {
     display: grid;
-    grid-template-columns: minmax(0, auto) auto;
+    grid-template-columns: auto auto;
     grid-template-rows: auto;
     grid-template-areas: none;
     width: max-content;
@@ -1208,18 +1212,19 @@ html.game-playing .touch-pad {
 
   .screen-game.has-dpad .stage-wrap.square,
   .screen-game.has-dpad.is-playing .stage-wrap.square {
+    grid-area: auto;
     grid-column: 1;
     grid-row: 1;
-    grid-area: unset;
-    max-width: min(420px, 58vw, calc(100dvh - 5.8rem));
+    width: min(420px, 58vw, calc(100dvh - 5.8rem));
+    max-width: none;
     margin: 0;
   }
 
   .screen-game.has-dpad .touch-pad.on,
   .screen-game.has-dpad.is-playing .touch-pad {
+    grid-area: auto;
     grid-column: 2;
     grid-row: 1;
-    grid-area: unset;
     width: min(188px, 34vw);
     margin: 0;
   }
